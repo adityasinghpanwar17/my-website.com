@@ -1343,7 +1343,7 @@
       const totalPrice = orderDetails.cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
       body += `%0D%0ATotal Price: ₹${totalPrice.toLocaleString('en-IN')}`;
       // Open mailto link
-      const mailtoLink = `mailto:adityapanwar102@gmail.com?subject=New%20Order%20from%20Panwar%26Son's&body=${body}`;
+      const mailtoLink = `mailto:panwarandsons11@gmail.com?subject=New%20Order%20from%20Panwar%26Son's&body=${body}`;
       window.location.href = mailtoLink;
       // Show thank you page
       renderThankYou(orderId);
@@ -1689,5 +1689,6 @@
  </body>
 
 </html>
+
 
 

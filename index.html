@@ -22,18 +22,15 @@
   </style>
  </head>
  <body class="font-poppins bg-white text-gray-900">
-  <!-- Header -->
   <header class="sticky top-0 z-50 bg-white shadow-md">
    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="flex justify-between items-center h-16">
-     <!-- Logo -->
      <a class="flex items-center space-x-2" href="#" id="nav-home">
       <img alt="Panwar &amp; Son's logo, stylized P letter in orange and pink gradient" class="h-12 w-12 object-contain" height="48" src="https://storage.googleapis.com/a1aa/image/3c4ae61f-5e2c-488a-0ae7-4c01a72e6be3.jpg" width="48"/>
       <span class="text-2xl font-bold text-pink-600 select-none">
        Panwar&amp;Son's
       </span>
      </a>
-     <!-- Navigation Menu (Desktop) -->
      <nav class="hidden md:flex space-x-8 font-semibold text-gray-700 items-center" id="desktop-nav-menu">
       <a class="hover:text-pink-600 transition cursor-pointer" id="nav-home-desktop">
        Home
@@ -48,7 +45,6 @@
        Contact
       </a>
      </nav>
-     <!-- Search bar -->
      <div class="hidden md:flex items-center border border-gray-300 rounded-md overflow-hidden focus-within:ring-2 focus-within:ring-pink-500 focus-within:border-pink-500 mx-4 flex-grow max-w-md">
       <input aria-label="Search" class="px-3 py-2 w-full focus:outline-none" id="search-input" placeholder="Search for products, brands and more" type="text"/>
       <button aria-label="Search" class="px-3 text-pink-600 hover:text-pink-800" id="search-button">
@@ -56,7 +52,6 @@
        </i>
       </button>
      </div>
-     <!-- User actions -->
      <div class="flex items-center space-x-4" id="user-actions">
       <button aria-label="User login or register" class="hidden md:flex items-center space-x-1 text-gray-700 hover:text-pink-600 transition cursor-pointer" id="nav-login-desktop">
        <i class="fas fa-user">
@@ -73,7 +68,6 @@
        </span>
       </button>
      </div>
-     <!-- User avatar container (hidden initially) -->
      <div class="hidden md:flex items-center space-x-2 cursor-pointer" id="user-avatar-container">
       <img alt="User profile photo" class="h-10 w-10 rounded-full object-cover" id="user-avatar" src="" width="40" height="40"/>
       <span class="font-semibold text-gray-700" id="user-email-display"></span>
@@ -81,14 +75,12 @@
        <i class="fas fa-sign-out-alt"></i>
       </button>
      </div>
-     <!-- Hamburger menu for mobile -->
      <button aria-label="Open menu" class="md:hidden text-gray-700 hover:text-pink-600 transition focus:outline-none focus:ring-2 focus:ring-pink-500 rounded" id="mobile-menu-button">
       <i class="fas fa-bars fa-lg">
       </i>
      </button>
     </div>
    </div>
-   <!-- Mobile menu -->
    <nav class="hidden md:hidden bg-white border-t border-gray-200" id="mobile-menu">
     <div class="px-4 pt-4 pb-2 space-y-1 font-semibold text-gray-700">
      <a class="block py-2 hover:bg-pink-50 hover:text-pink-600 rounded cursor-pointer" id="nav-home-mobile">
@@ -122,11 +114,8 @@
     </div>
    </nav>
   </header>
-  <!-- Main content container -->
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 mb-16 min-h-[80vh]" id="main-content">
-   <!-- Content will be dynamically injected here -->
-  </main>
-  <!-- Footer -->
+   </main>
   <footer class="bg-gray-900 text-gray-300">
    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 grid grid-cols-1 md:grid-cols-4 gap-8">
     <div>
@@ -489,7 +478,6 @@
       currentProduct = null;
       const main = document.getElementById('main-content');
       main.innerHTML = `
-      <!-- Hero Banner -->
       <section class="relative rounded-lg overflow-hidden shadow-lg">
         <img alt="Hero banner showing models wearing trendy clothes with text overlay about offers and featured products" class="w-full h-auto object-cover" height="480" src="https://storage.googleapis.com/a1aa/image/ab8cbd20-5c01-4801-734a-6a7bcbf1294e.jpg" width="1440"/>
         <div class="absolute inset-0 bg-gradient-to-r from-pink-600/70 to-pink-400/50 flex flex-col justify-center px-6 md:px-20">
@@ -504,7 +492,6 @@
           </button>
         </div>
       </section>
-      <!-- Categories Section -->
       <section class="mt-12">
         <h2 class="text-2xl font-semibold text-gray-800 mb-6">
           Shop by Category
@@ -548,7 +535,6 @@
           </div>
         </div>
       </section>
-      <!-- Featured Products -->
       <section class="mt-16">
         <h2 class="text-2xl font-semibold text-gray-800 mb-6">
           Featured Products
@@ -556,7 +542,6 @@
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6" id="featured-products">
         </div>
       </section>
-      <!-- Testimonials -->
       <section class="mt-20 bg-pink-50 rounded-lg p-8 shadow-md">
         <h2 class="text-2xl font-semibold text-gray-800 mb-8 text-center">
           What Our Customers Say
@@ -588,7 +573,6 @@
           </blockquote>
         </div>
       </section>
-      <!-- Newsletter Signup -->
       <section class="mt-20 bg-pink-600 rounded-lg p-8 text-white text-center shadow-lg">
         <h2 class="text-3xl font-bold mb-4">
           Subscribe to Our Newsletter
@@ -942,12 +926,18 @@
       document.getElementById('back-to-cart-btn').addEventListener('click', () => {
         renderCart();
       });
-      document.getElementById('checkout-form').addEventListener('submit', e => {
+      document.getElementById('checkout-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         if (!e.target.checkValidity()) {
           e.target.reportValidity();
           return;
         }
+
+        const submitButton = e.target.querySelector('button[type="submit"]');
+        const originalButtonText = submitButton.innerHTML;
+        submitButton.disabled = true;
+        submitButton.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>Processing...`;
+        
         // Gather form data
         const formData = new FormData(e.target);
         const orderDetails = {
@@ -961,8 +951,15 @@
           paymentMethod: formData.get('paymentMethod'),
           cart: [...cart]
         };
-        // Send order email
-        sendOrderEmail(orderDetails);
+        
+        // Submit order data
+        const success = await submitOrder(orderDetails);
+
+        // If submission fails, re-enable the button
+        if (!success) {
+            submitButton.disabled = false;
+            submitButton.innerHTML = originalButtonText;
+        }
       });
       updateCartCount();
     }
@@ -1325,35 +1322,75 @@
       updateCartCount();
     }
 
-    // Send order email using mailto link
-    function sendOrderEmail(orderDetails) {
-      // Generate order ID
+    // Submit order details to a form backend service like Formspree
+    async function submitOrder(orderDetails) {
+      // Generate a unique order ID
       const orderId = 'PNS' + Date.now();
-      // Build email body
-      let body = `Order ID: ${orderId}%0D%0A`;
-      body += `Name: ${orderDetails.fullName}%0D%0A`;
-      body += `Email: ${orderDetails.email}%0D%0A`;
-      body += `Phone: ${orderDetails.phone}%0D%0A`;
-      body += `Address: ${orderDetails.address}, ${orderDetails.city}, ${orderDetails.state} - ${orderDetails.zip}%0D%0A`;
-      body += `Payment Method: ${orderDetails.paymentMethod}%0D%0A%0D%0A`;
-      body += `Order Details:%0D%0A`;
-      orderDetails.cart.forEach(item => {
-        body += `- ${item.name} (Size: ${item.size}, Color: ${item.color}) x ${item.quantity} @ ₹${item.price} each%0D%0A`;
-      });
+      
+      // IMPORTANT: Replace this placeholder with your own Formspree endpoint URL!
+      const formEndpoint = 'https://formspree.io/f/mvgbpyav';
+
+      // Prepare the data for submission in a readable format
       const totalPrice = orderDetails.cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
-      body += `%0D%0ATotal Price: ₹${totalPrice.toLocaleString('en-IN')}`;
-      // Open mailto link
-      const mailtoLink = `mailto:panwarandsons11@gmail.com?subject=New%20Order%20from%20Panwar%26Son's&body=${body}`;
-      window.location.href = mailtoLink;
-      // Show thank you page
-      renderThankYou(orderId);
+      const cartSummary = orderDetails.cart.map(item => 
+        `- ${item.name} (Size: ${item.size}, Color: ${item.color}) x ${item.quantity} @ ${formatPrice(item.price)}`
+      ).join('\n');
+      
+      const submissionData = {
+        'Order ID': orderId,
+        'Customer Name': orderDetails.fullName,
+        'Email': orderDetails.email,
+        'Phone': orderDetails.phone,
+        'Shipping Address': `${orderDetails.address}, ${orderDetails.city}, ${orderDetails.state} - ${orderDetails.zip}`,
+        'Payment Method': orderDetails.paymentMethod,
+        'Total Amount': formatPrice(totalPrice),
+        '--- Order Items ---': '--------------------',
+        'Items': cartSummary,
+      };
+
+      try {
+        const response = await fetch(formEndpoint, {
+          method: 'POST',
+          body: JSON.stringify(submissionData),
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          // If submission is successful, show the thank you page
+          renderThankYou(orderId);
+          return true;
+        } else {
+          // Handle server-side errors from the form endpoint
+          const data = await response.json();
+          if (data.errors) {
+            alert(`Submission failed: ${data.errors.map(error => error.message).join(', ')}`);
+          } else {
+            alert('An unexpected error occurred. Please try again.');
+          }
+          return false;
+        }
+      } catch (error) {
+        // Handle network errors (e.g., user is offline)
+        console.error('Error submitting order:', error);
+        alert('Could not send order details. Please check your internet connection and try again.');
+        return false;
+      }
     }
 
     // Get Gravatar URL for email (fallback to placeholder)
     function getGravatarUrl(email) {
       const trimmed = email.trim().toLowerCase();
-      const hash = md5(trimmed);
-      return `https://www.gravatar.com/avatar/${hash}?d=identicon&s=40`;
+      // MD5 function is required for Gravatar. Assuming it's defined below.
+      // If md5 function is not available, this will cause an error.
+      // Let's add a check to prevent that.
+      if (typeof md5 === 'function') {
+        const hash = md5(trimmed);
+        return `https://www.gravatar.com/avatar/${hash}?d=identicon&s=40`;
+      }
+      return `https://placehold.co/40x40/png?text=${email.charAt(0).toUpperCase()}`;
     }
 
     // MD5 function for gravatar hash (from https://stackoverflow.com/a/16552188)
@@ -1431,6 +1468,26 @@
           WordToHexValue = WordToHexValue + WordToHexValue_temp.substr(WordToHexValue_temp.length-2,2);
         }
         return WordToHexValue;
+      }
+      function utf8Encode(string) {
+        string = string.replace(/\r\n/g,"\n");
+        let utftext = "";
+        for (let n = 0; n < string.length; n++) {
+            const c = string.charCodeAt(n);
+            if (c < 128) {
+                utftext += String.fromCharCode(c);
+            }
+            else if((c > 127) && (c < 2048)) {
+                utftext += String.fromCharCode((c >> 6) | 192);
+                utftext += String.fromCharCode((c & 63) | 128);
+            }
+            else {
+                utftext += String.fromCharCode((c >> 12) | 224);
+                utftext += String.fromCharCode(((c >> 6) & 63) | 128);
+                utftext += String.fromCharCode((c & 63) | 128);
+            }
+        }
+        return utftext;
       }
       let x=Array();
       let k,AA,BB,CC,DD,a,b,c,d;
@@ -1689,6 +1746,3 @@
  </body>
 
 </html>
-
-
-

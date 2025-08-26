@@ -1323,62 +1323,49 @@
     }
 
     // Submit order details to a form backend service like Formspree
-    async function submitOrder(orderDetails) {
-      // Generate a unique order ID
-      const orderId = 'PNS' + Date.now();
-      
-      // IMPORTANT: Replace this placeholder with your own Formspree endpoint URL!
-      const formEndpoint = 'https://formspree.io/f/mvgbpyav';
+   async function submitOrder(orderDetails) {
+    const orderId = 'PNS' + Date.now();
+    // PASTE YOUR NEW URL FROM STEP 2 HERE
+    const formEndpoint = 'https://script.google.com/macros/s/AKfycbwbojGnpFoVfEXnfL5Z0-HXZLvPYmYMS_mdqT-PjvUheMwxd82ztLhZ33l1aUOR7_pGCA/exec'; 
 
-      // Prepare the data for submission in a readable format
-      const totalPrice = orderDetails.cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
-      const cartSummary = orderDetails.cart.map(item => 
-        `- ${item.name} (Size: ${item.size}, Color: ${item.color}) x ${item.quantity} @ ${formatPrice(item.price)}`
-      ).join('\n');
-      
-      const submissionData = {
+    const submissionData = {
         'Order ID': orderId,
         'Customer Name': orderDetails.fullName,
         'Email': orderDetails.email,
         'Phone': orderDetails.phone,
         'Shipping Address': `${orderDetails.address}, ${orderDetails.city}, ${orderDetails.state} - ${orderDetails.zip}`,
         'Payment Method': orderDetails.paymentMethod,
-        'Total Amount': formatPrice(totalPrice),
-        '--- Order Items ---': '--------------------',
-        'Items': cartSummary,
-      };
+        'Total Amount': formatPrice(orderDetails.cart.reduce((acc, item) => acc + item.price * item.quantity, 0)),
+        'Items': orderDetails.cart.map(item => `- ${item.name} (Size: ${item.size}, Color: ${item.color}) x ${item.quantity}`).join('\n'),
+    };
 
-      try {
+    try {
+        // We send the data and now we can properly wait for a response
         const response = await fetch(formEndpoint, {
-          method: 'POST',
-          body: JSON.stringify(submissionData),
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          }
+            method: 'POST',
+            headers: {
+                'Content-Type': 'text/plain;charset=utf-8', // Use text/plain for this method
+            },
+            body: JSON.stringify(submissionData),
         });
+        
+        const result = await response.json();
 
-        if (response.ok) {
-          // If submission is successful, show the thank you page
-          renderThankYou(orderId);
-          return true;
+        if (result.result === 'success') {
+            renderThankYou(orderId);
+            return true;
         } else {
-          // Handle server-side errors from the form endpoint
-          const data = await response.json();
-          if (data.errors) {
-            alert(`Submission failed: ${data.errors.map(error => error.message).join(', ')}`);
-          } else {
-            alert('An unexpected error occurred. Please try again.');
-          }
-          return false;
+            console.error('Submission failed:', result.message);
+            showToast('Order could not be submitted. Please try again.', true);
+            return false;
         }
-      } catch (error) {
-        // Handle network errors (e.g., user is offline)
+
+    } catch (error) {
         console.error('Error submitting order:', error);
-        alert('Could not send order details. Please check your internet connection and try again.');
+        showToast('Could not send order details. Please check your internet connection.', true);
         return false;
-      }
     }
+}
 
     // Get Gravatar URL for email (fallback to placeholder)
     function getGravatarUrl(email) {
@@ -1746,3 +1733,4 @@
  </body>
 
 </html>
+

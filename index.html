@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8" />
-    <meta content="width=device-width, initial-scale=1" name="viewport" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panwar&Son's - Fashion & Lifestyle E-Commerce</title>
     <link href="https://storage.googleapis.com/a1aa/image/3c4ae61f-5e2c-488a-0ae7-4c01a72e6be3.jpg" rel="icon" type="image/png" />
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet" />
@@ -57,6 +57,7 @@
                 <a class="block py-2 hover:bg-pink-50 hover:text-pink-600 rounded cursor-pointer" id="nav-shop-mobile">Shop</a>
                 <a class="block py-2 hover:bg-pink-50 hover:text-pink-600 rounded cursor-pointer" id="nav-about-mobile">About</a>
                 <a class="block py-2 hover:bg-pink-50 hover:text-pink-600 rounded cursor-pointer" id="nav-contact-mobile">Contact</a>
+                <a class="block py-2 hover:bg-pink-50 hover:text-pink-600 rounded cursor-pointer hidden" id="nav-admin-mobile">Admin Dashboard</a>
                 <a class="block py-2 hover:bg-pink-50 hover:text-pink-600 rounded flex items-center space-x-2 cursor-pointer" id="nav-login-mobile">
                     <i class="fas fa-user"></i><span>Login / Signup</span>
                 </a>
@@ -102,591 +103,1476 @@
                 </div>
             </div>
         </div>
+      <div id="offer-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div id="modal-overlay" class="absolute inset-0 bg-black bg-opacity-60"></div>
+    <div class="relative bg-white rounded-lg shadow-xl w-full max-w-md mx-auto overflow-hidden">
+        <button id="modal-close-btn" class="absolute top-2 right-2 text-gray-400 hover:text-gray-800 transition z-10">
+            <i class="fas fa-times fa-lg"></i>
+        </button>
+        <div class="flex flex-col md:flex-row h-full">
+            <div class="md:w-1/2 flex-shrink-0">
+                <img id="popup-banner-image" src="" alt="Special Offer" class="w-full h-full object-cover">
+            </div>
+            <div class="p-6 md:w-1/2 flex flex-col justify-center items-center text-center">
+                <h2 id="popup-banner-title" class="text-2xl font-bold text-gray-800 mb-2"></h2>
+                <p id="popup-banner-offer-text" class="text-4xl font-bold text-pink-600 mb-4"></p>
+                <div class="text-gray-600 mb-6">
+                    <span id="popup-banner-description"></span>
+                    <span id="popup-banner-promo-code" class="font-semibold"></span>
+                </div>
+                <a href="#" id="modal-shop-now-btn" class="w-full bg-pink-600 text-white py-2 px-4 rounded-md font-semibold hover:bg-pink-700 transition">
+                    Shop Now
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+   
+</body>
         <div class="border-t border-gray-800 text-center py-4 text-gray-500 text-sm select-none">© 2025 Panwar&Son's. All rights reserved.</div>
     </footer>
 
+    
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, query, onSnapshot, serverTimestamp, doc, deleteDoc, where, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+    import { initializeApp as initializeFirebaseApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+    import { getFirestore, collection, addDoc, query, onSnapshot, serverTimestamp, doc, deleteDoc, where, getDocs, updateDoc, getDoc, setDoc, orderBy } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyBmvOrvAs1EJAUJJ7E5iG-gQmXWtzqDRxw",
-            authDomain: "e-commerce-29e15.firebaseapp.com",
-            projectId: "e-commerce-29e15",
-            storageBucket: "e-commerce-29e15.appspot.com",
-            messagingSenderId: "429029191252",
-            appId: "1:429029191252:web:d1f866328f38928ee047c1",
-            measurementId: "G-3TV4L14NKC"
+    const firebaseConfig = {
+        apiKey: "AIzaSyBmvOrvAs1EJAUJJ7E5iG-gQmXWtzqDRxw",
+        authDomain: "e-commerce-29e15.firebaseapp.com",
+        projectId: "e-commerce-29e15",
+        storageBucket: "e-commerce-29e15.appspot.com",
+        messagingSenderId: "429029191252",
+        appId: "1:429029191252:web:d1f866328f38928ee047c1",
+        measurementId: "G-3TV4L14NKC"
+    };
+
+    const app = initializeFirebaseApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const ADMIN_UID = "u11KiXjaIrbrMHgublgzwkRIR4p2";
+
+    let cart = [];
+    let currentUser = null;
+    let allProducts = [];
+    let currentRoute = { page: 'home', params: null };
+    let appliedPromoDetails = null;
+    const mainContent = document.getElementById('main-content');
+
+    // --- UTILITY FUNCTIONS ---
+    function formatPrice(price) { return `₹${price.toLocaleString('en-IN')}`; }
+
+    function createStarRating(rating, reviews) {
+        let fullStars = Math.floor(rating);
+        let halfStar = rating - fullStars >= 0.5;
+        let emptyStars = 5 - fullStars - (halfStar ? 1 : 0);
+        let starsHtml = '';
+        for (let i = 0; i < fullStars; i++) { starsHtml += '<i class="fas fa-star text-yellow-400"></i>'; }
+        if (halfStar) { starsHtml += '<i class="fas fa-star-half-alt text-yellow-400"></i>'; }
+        for (let i = 0; i < emptyStars; i++) { starsHtml += '<i class="far fa-star text-gray-300"></i>'; }
+        if (reviews) {
+            starsHtml += `<span class="text-gray-500 text-xs ml-2">(${reviews} reviews)</span>`;
+        }
+        return starsHtml;
+    }
+
+    function getCategoryImage(category) {
+        const categoryImages = {
+            Men: "https://storage.googleapis.com/a1aa/image/f50ac7c2-9860-4b64-b9d8-4e046377db70.jpg",
+            Women: "https://storage.googleapis.com/a1aa/image/ca7a2178-494a-42db-cfd6-55754bbc6151.jpg",
+            Electronics: "https://storage.googleapis.com/a1aa/image/f342bc1f-abff-43e0-3108-f00da8404186.jpg",
+            Footwear: "https://storage.googleapis.com/a1aa/image/56ba289b-9e94-41ab-e63d-813bdf58f364.jpg",
+            Accessories: "https://storage.googleapis.com/a1aa/image/b4d08e2c-3d3f-47ca-50ac-cb1ddcc8c9a0.jpg",
+            Kids: "https://storage.googleapis.com/a1aa/image/e0f00960-58d0-44d6-5280-938ae48a3efd.jpg",
         };
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
-        const ADMIN_UID = "u11KiXjaIrbrMHgublgzwkRIR4p2"; 
-        
-        let cart = [];
-        let currentUser = null;
-        let allProducts = [];
-        let currentRoute = { page: 'home', params: null };
-
-        const mainContent = document.getElementById('main-content');
-        
-        // --- UTILITY FUNCTIONS ---
-        function formatPrice(price) { return `₹${price.toLocaleString('en-IN')}`; }
-
-        function createStarRating(rating, reviews) {
-            let fullStars = Math.floor(rating);
-            let halfStar = rating - fullStars >= 0.5;
-            let emptyStars = 5 - fullStars - (halfStar ? 1 : 0);
-            let starsHtml = '';
-            for (let i = 0; i < fullStars; i++) { starsHtml += '<i class="fas fa-star text-yellow-400"></i>'; }
-            if (halfStar) { starsHtml += '<i class="fas fa-star-half-alt text-yellow-400"></i>'; }
-            for (let i = 0; i < emptyStars; i++) { starsHtml += '<i class="far fa-star text-gray-300"></i>'; }
-            if (reviews) {
-                starsHtml += `<span class="text-gray-500 text-xs ml-2">(${reviews} reviews)</span>`;
+        return categoryImages[category] || "https://placehold.co/300x400/png?text=Category";
+    }
+    function toggleMobileMenu(show) {
+        const menu = document.getElementById('mobile-menu');
+        if (show === undefined) {
+            menu.classList.toggle('hidden');
+        } else if (show) {
+            menu.classList.remove('hidden');
+        } else {
+            menu.classList.add('hidden');
+        }
+    }
+    
+    function throttle(func, limit) {
+        let inThrottle;
+        return function() {
+            const args = arguments;
+            const context = this;
+            if (!inThrottle) {
+                func.apply(context, args);
+                inThrottle = true;
+                setTimeout(() => inThrottle = false, limit);
             }
-            return starsHtml;
+        }
+    }
+
+    function attachDynamicListeners() {
+        // Product cards (view details)
+        document.querySelectorAll('.product-card').forEach(card => {
+            if (card.dataset.listener) return;
+            card.dataset.listener = true;
+            card.addEventListener('click', e => {
+                if (e.target.closest('.add-to-cart-btn')) return;
+                renderProduct(card.dataset.id);
+            });
+        });
+
+        // Add to cart from product cards
+        document.querySelectorAll('.add-to-cart-btn').forEach(btn => {
+            if (btn.dataset.listener) return;
+            btn.dataset.listener = true;
+            btn.addEventListener('click', e => {
+                e.stopPropagation();
+                const product = allProducts.find(p => p.id === btn.dataset.id);
+                if (!product) return;
+                const size = product.sizes && product.sizes.length > 0 ? product.sizes[0] : 'N/A';
+                const color = product.colors && product.colors.length > 0 ? product.colors[0] : 'N/A';
+                addToCart(product.id, size, color, 1);
+                alert(`${product.name} added to cart!`);
+            });
+        });
+
+        // Category links on home page
+        document.querySelectorAll('.category-item').forEach(el => el.addEventListener('click', () => renderShop(el.dataset.category)));
+
+        // Home page hero button
+        const heroBtn = document.getElementById('hero-shop-now');
+        if (heroBtn) heroBtn.addEventListener('click', () => renderShop(null));
+
+        // Product Detail Page: Add to Cart
+        const detailBtn = document.querySelector('.add-to-cart-btn-detail');
+        if (detailBtn) detailBtn.addEventListener('click', e => {
+            const size = document.getElementById('size-select').value;
+            const color = document.getElementById('color-select').value;
+            addToCart(e.currentTarget.dataset.id, size, color, 1);
+            alert('Product added to cart!');
+        });
+
+        // Product Detail Page: Review Form
+        const reviewForm = document.getElementById('review-form');
+        if (reviewForm) {
+            reviewForm.addEventListener('submit', async e => {
+                e.preventDefault();
+                const rating = parseInt(document.getElementById('rating-value').value);
+                if (rating === 0) { alert('Please select a star rating.'); return; }
+                await addDoc(collection(db, "products", currentRoute.params, "reviews"), {
+                    text: document.getElementById('review-text').value,
+                    rating: rating,
+                    userEmail: currentUser.email,
+                    createdAt: serverTimestamp()
+                });
+                reviewForm.reset();
+                // Update aggregate rating on product
+                const reviewsRef = collection(db, "products", currentRoute.params, "reviews");
+                const snapshot = await getDocs(reviewsRef);
+                let totalRating = 0;
+                snapshot.forEach(doc => totalRating += doc.data().rating);
+                const avgRating = snapshot.size > 0 ? totalRating / snapshot.size : 0;
+                await updateDoc(doc(db, "products", currentRoute.params), {
+                    rating: avgRating,
+                    reviews: snapshot.size
+                });
+            });
+
+            const stars = document.querySelectorAll('#star-rating-input i');
+            stars.forEach(star => {
+                star.addEventListener('mouseover', () => {
+                    stars.forEach(s => {
+                        s.classList.toggle('fas', s.dataset.value <= star.dataset.value);
+                        s.classList.toggle('far', s.dataset.value > star.dataset.value);
+                    });
+                });
+                star.addEventListener('mouseout', () => {
+                    const val = document.getElementById('rating-value').value;
+                    stars.forEach(s => {
+                        s.classList.toggle('fas', s.dataset.value <= val);
+                        s.classList.toggle('far', s.dataset.value > val);
+                    });
+                });
+                star.addEventListener('click', () => document.getElementById('rating-value').value = star.dataset.value);
+            });
+            document.getElementById('login-link')?.addEventListener('click', e => { e.preventDefault(); renderLogin(); });
         }
 
-        function getCategoryImage(category) {
-            const categoryImages = {
-                Men: "https://storage.googleapis.com/a1aa/image/f50ac7c2-9860-4b64-b9d8-4e046377db70.jpg",
-                Women: "https://storage.googleapis.com/a1aa/image/ca7a2178-494a-42db-cfd6-55754bbc6151.jpg",
-                Electronics: "https://storage.googleapis.com/a1aa/image/f342bc1f-abff-43e0-3108-f00da8404186.jpg",
-                Footwear: "https://storage.googleapis.com/a1aa/image/56ba289b-9e94-41ab-e63d-813bdf58f364.jpg",
-                Accessories: "https://storage.googleapis.com/a1aa/image/b4d08e2c-3d3f-47ca-50ac-cb1ddcc8c9a0.jpg",
-                Kids: "https://storage.googleapis.com/a1aa/image/e0f00960-58d0-44d6-5280-938ae48a3efd.jpg",
-            };
-            return categoryImages[category] || "https://placehold.co/300x400/png?text=Category";
-        }
+        // Cart Page Listeners
+        document.querySelectorAll('.quantity-input').forEach(input => input.addEventListener('change', e => {
+            cart[parseInt(e.target.dataset.idx)].quantity = parseInt(e.target.value) < 1 ? 1 : parseInt(e.target.value);
+            renderCart();
+        }));
+        document.querySelectorAll('.remove-item-btn').forEach(btn => btn.addEventListener('click', e => {
+            cart.splice(parseInt(e.currentTarget.dataset.idx), 1);
+            renderCart();
+        }));
+        document.getElementById('proceed-checkout-btn')?.addEventListener('click', renderCheckout);
 
-        // --- UI UPDATE FUNCTIONS ---
-        function updateUserDisplay(user) {
-            const loginDesktop = document.getElementById('nav-login-desktop');
-            const avatarContainer = document.getElementById('user-avatar-container');
-            const adminLink = document.getElementById('nav-admin-desktop');
+        // Contact Page
+        document.getElementById('contact-form')?.addEventListener('submit', e => {
+            e.preventDefault();
+            alert('Thank you for your message!');
+            e.target.reset();
+        });
+    }
+
+    // --- UI UPDATE FUNCTIONS ---
+    function updateUserDisplay(user) {
+    const loginDesktop = document.getElementById('nav-login-desktop');
+    const loginMobile = document.getElementById('nav-login-mobile');
+    const avatarContainer = document.getElementById('user-avatar-container');
+    const adminLinkDesktop = document.getElementById('nav-admin-desktop');
+    const adminLinkMobile = document.getElementById('nav-admin-mobile'); // Get the new mobile link
+
+    if (user) {
+        loginDesktop.style.display = 'none';
+        loginMobile.style.display = 'none'; // Hide mobile login button
+        avatarContainer.style.display = 'flex';
+        document.getElementById('user-avatar').src = user.photoURL || `https://ui-avatars.com/api/?name=${user.email.charAt(0)}&background=random`;
+        document.getElementById('user-email-display').textContent = user.email.split('@')[0];
+        
+        // Check if user is admin or approved vendor
+        if (user.uid === ADMIN_UID || (user.role === 'vendor' && user.status === 'approved')) {
+            adminLinkDesktop.classList.remove('hidden');
+            adminLinkMobile.classList.remove('hidden'); // Show the mobile link
+        } else {
+            adminLinkDesktop.classList.add('hidden');
+            adminLinkMobile.classList.add('hidden'); // Hide the mobile link
+        }
+    } else {
+        loginDesktop.style.display = 'flex';
+        loginMobile.style.display = 'flex'; // Show mobile login button
+        avatarContainer.style.display = 'none';
+        adminLinkDesktop.classList.add('hidden');
+        adminLinkMobile.classList.add('hidden'); // Hide both admin links
+    }
+}
+
+    function updateCartCount() {
+        const count = cart.reduce((acc, item) => acc + item.quantity, 0);
+        document.getElementById('cart-count').textContent = count;
+    }
+
+    // --- CART LOGIC ---
+    function addToCart(productId, size, color, quantity) {
+        let product = allProducts.find(p => p.id === productId);
+        if (!product) return;
+        const existingIndex = cart.findIndex(item => item.id === productId && item.size === size && item.color === color);
+        if (existingIndex !== -1) {
+            cart[existingIndex].quantity += quantity;
+        } else {
+            // FIX: Added 'category' property as instructed by the comment
+            cart.push({ id: product.id, name: product.name, price: product.price, category: product.category, size, color, quantity, image: product.image, alt: product.alt, vendorId: product.vendorId });
+        }
+        updateCartCount();
+    }
+
+    // --- RENDER FUNCTIONS (PAGES) ---
+    function renderHome() {
+        currentRoute = { page: 'home' };
+        mainContent.innerHTML = `
+            <section class="relative rounded-lg overflow-hidden shadow-lg h-96">
+                <video autoplay loop muted playsinline class="absolute z-0 w-full h-full object-cover">
+                    <source src="Generate_a_royal_202508171842_j6odf.mp4" type="video/mp4">
+                </video>
+                <div class="relative z-10 h-full bg-gradient-to-r from-black/60 to-transparent flex flex-col justify-center px-6 md:px-20">
+                    <h1 class="text-white text-4xl md:text-6xl font-extrabold max-w-xl leading-tight drop-shadow-lg">Discover Your Style</h1>
+                    <p class="mt-4 text-pink-100 text-lg md:text-xl max-w-md drop-shadow-md">Up to 50% off on top brands.</p>
+                    <button id="hero-shop-now" class="mt-6 inline-block bg-white text-pink-600 font-semibold px-6 py-3 rounded-md shadow-md hover:bg-pink-50 transition w-max cursor-pointer">Shop Now</button>
+                </div>
+            </section>
+            <section class="mt-12">
+                <h2 class="text-xl sm:text-2xl font-semibold text-gray-800 mb-4 sm:mb-6">Shop by Category</h2>
+                <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-6" id="category-grid"></div>
+            </section>
+            <section class="mt-16">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-6">Featured Products</h2>
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6" id="featured-products"></div>
+            </section>
+        `;
+        const categoryContainer = document.getElementById('category-grid');
+        const categories = ["Men", "Women", "Electronics", "Footwear", "Accessories", "Kids"];
+        categoryContainer.innerHTML = categories.map(cat => `
+            <div class="group flex flex-col items-center space-y-2 hover:text-pink-600 transition cursor-pointer category-item" data-category="${cat}">
+                <img alt="Category: ${cat}" class="rounded-lg object-cover w-28 h-28" height="120" src="${getCategoryImage(cat)}" width="120"/>
+                <span class="font-medium text-center">${cat}</span>
+            </div>`).join('');
+
+        const featuredContainer = document.getElementById('featured-products');
+        let featuredProducts = allProducts.sort((a, b) => (b.reviews || 0) - (a.reviews || 0)).slice(0, 5);
+        featuredContainer.innerHTML = featuredProducts.map(p => `
+            <article class="border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition relative group cursor-pointer product-card" data-id="${p.id}">
+                <img alt="${p.alt || p.name}" class="w-full h-64 object-cover" src="${p.image}" />
+                <div class="p-4">
+                    <h3 class="text-gray-900 font-semibold text-lg truncate">${p.name}</h3>
+                    <p class="text-pink-600 font-bold mt-1">${formatPrice(p.price)}</p>
+                    <div class="flex items-center mt-2">${createStarRating(p.rating, p.reviews)}</div>
+                    <button class="mt-4 w-full bg-pink-600 text-white py-2 rounded-md font-semibold hover:bg-pink-700 transition add-to-cart-btn flex justify-center items-center space-x-2" data-id="${p.id}">
+                         <i class="fas fa-cart-plus"></i><span>Add to Cart</span>
+                    </button>
+                </div>
+            </article>
+        `).join('');
+        attachDynamicListeners();
+    }
+
+    function renderShop(category = null) {
+        currentRoute = { page: 'shop', params: category };
+        const products = category ? allProducts.filter(p => p.category === category) : allProducts;
+        const title = category || "All Products";
+        mainContent.innerHTML = `
+            <h2 class="text-3xl font-bold text-gray-800 mb-8">${title}</h2>
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-6">
+                ${products.map(p => `
+                    <article class="product-card cursor-pointer border rounded-lg overflow-hidden shadow-sm hover:shadow-lg" data-id="${p.id}">
+                        <img alt="${p.alt || p.name}" class="w-full h-64 object-cover" src="${p.image}"/>
+                        <div class="p-4">
+                            <h3 class="text-gray-800 font-semibold text-base truncate">${p.name}</h3>
+                            <p class="text-pink-600 font-bold mt-1 text-lg">${formatPrice(p.price)}</p>
+                            <div class="flex items-center mt-2">${createStarRating(p.rating, p.reviews)}</div>
+                            <button class="mt-4 w-full bg-pink-600 text-white py-2 rounded-md font-semibold hover:bg-pink-700 transition add-to-cart-btn flex justify-center items-center space-x-2" data-id="${p.id}">
+                                <i class="fas fa-cart-plus"></i><span>Add to Cart</span>
+                            </button>
+                        </div>
+                    </article>
+                `).join('')}
+            </div>
+        `;
+        attachDynamicListeners();
+    }
+
+    function renderProduct(productId) {
+    currentRoute = { page: 'product', params: productId };
+    const product = allProducts.find(p => p.id === productId);
+    if (!product) { return; } // Simplified the 404 case
+
+    // --- START: इमेज गैलरी बनाने का नया लॉजिक ---
+    // सभी इमेजेज (मुख्य + अतिरिक्त) को एक साथ एक ऐरे में रखें
+    const allProductImages = [product.image, ...(product.additionalImages || [])].filter(Boolean); // filter(Boolean) removes any empty/null entries
+
+    // थंबनेल बनाने के लिए HTML
+    const thumbnailsHtml = allProductImages.map((imgUrl, index) => `
+        <img src="${imgUrl}" alt="${product.name} thumbnail ${index + 1}" 
+             class="w-20 h-20 object-cover rounded-md cursor-pointer border-2 hover:border-pink-500 thumbnail-image ${index === 0 ? 'border-pink-500' : 'border-transparent'}">
+    `).join('');
+    // --- END: इमेज गैलरी ---
+
+    // --- START: साइज़ और कलर बनाने का लॉजिक ---
+    const sizeOptions = product.sizes && product.sizes.length > 0
+        ? product.sizes.map(s => `<option value="${s}">${s}</option>`).join('')
+        : '<option value="N/A">Not Available</option>';
+
+    const colorOptions = product.colors && product.colors.length > 0
+        ? product.colors.map(c => `<option value="${c}">${c}</option>`).join('')
+        : '<option value="N/A">Not Available</option>';
+    // --- END: साइज़ और कलर ---
+
+    mainContent.innerHTML = `
+        <div id="magnifier-overlay" class="fixed hidden inset-0 bg-black bg-opacity-50 z-40"></div>
+        <div class="flex flex-col md:flex-row gap-10">
+            <div class="md:w-1/2 relative" id="product-image-container">
+                <img id="main-product-image" alt="${product.name}" class="w-full rounded-lg shadow-lg mb-3 h-96 object-contain cursor-zoom-in" src="${allProductImages[0] || 'https://placehold.co/600x600?text=No+Image'}"/>
+                <div id="magnifier-lens" class="absolute hidden border-2 border-pink-500 pointer-events-none"></div>
+                <div id="magnifier-result" class="hidden bg-white border-2 border-gray-300 shadow-lg overflow-hidden"></div>
+                
+                <div class="flex space-x-2 overflow-x-auto p-1 mt-2">
+                    ${thumbnailsHtml}
+                </div>
+            </div>
+            <div class="md:w-1/2">
+                <h1 class="text-4xl font-bold">${product.name}</h1>
+                <p class="text-3xl font-bold text-pink-600 my-4">${formatPrice(product.price)}</p>
+                <p class="text-gray-600 leading-relaxed mb-6 whitespace-pre-wrap">${product.description}</p>
+                <div class="flex items-center gap-4 mb-6">
+                    <div class="w-1/2"><label for="size-select" class="block text-sm font-medium text-gray-700">Size</label><select id="size-select" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500 sm:text-sm">${sizeOptions}</select></div>
+                    <div class="w-1/2"><label for="color-select" class="block text-sm font-medium text-gray-700">Color</label><select id="color-select" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500 sm:text-sm">${colorOptions}</select></div>
+                </div>
+                <button class="w-full bg-pink-600 text-white py-3 rounded-lg font-semibold hover:bg-pink-700 transition add-to-cart-btn-detail" data-id="${product.id}">Add to Cart</button>
+                
+                <div class="mt-10">
+                    <h3 class="text-2xl font-bold mb-4">Reviews</h3>
+                    <div id="reviews-container" class="space-y-4"></div>
+                    <form id="review-form" class="mt-6 ${currentUser ? '' : 'hidden'}">
+                        <h4 class="font-semibold mb-2">Write a Review</h4>
+                        <div class="flex items-center mb-2" id="star-rating-input">
+                            <i class="far fa-star text-2xl text-gray-400 cursor-pointer" data-value="1"></i><i class="far fa-star text-2xl text-gray-400 cursor-pointer" data-value="2"></i><i class="far fa-star text-2xl text-gray-400 cursor-pointer" data-value="3"></i><i class="far fa-star text-2xl text-gray-400 cursor-pointer" data-value="4"></i><i class="far fa-star text-2xl text-gray-400 cursor-pointer" data-value="5"></i>
+                        </div>
+                        <input type="hidden" id="rating-value" value="0">
+                        <textarea id="review-text" class="w-full border rounded-md p-2" placeholder="Write your review..." required></textarea>
+                        <button type="submit" class="mt-2 bg-pink-600 text-white px-4 py-2 rounded-md">Submit Review</button>
+                    </form>
+                    <p id="login-for-review" class="${currentUser ? 'hidden' : ''}">Please <a href="#" id="login-link" class="text-pink-600">login</a> to write a review.</p>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // --- START: थंबनेल के लिए नया इवेंट लिसनर ---
+    const mainProductImage = document.getElementById('main-product-image');
+    document.querySelectorAll('.thumbnail-image').forEach(thumb => {
+        thumb.addEventListener('click', () => {
+            const newSrc = thumb.src;
+            mainProductImage.src = newSrc;
             
-            if (user) {
-                loginDesktop.style.display = 'none';
-                avatarContainer.style.display = 'flex';
-                document.getElementById('user-avatar').src = user.photoURL || `https://ui-avatars.com/api/?name=${user.email.charAt(0)}&background=random`;
-                document.getElementById('user-email-display').textContent = user.email.split('@')[0];
-                if (user.uid === ADMIN_UID) {
-                    adminLink.classList.remove('hidden');
-                }
-            } else {
-                loginDesktop.style.display = 'flex';
-                avatarContainer.style.display = 'none';
-                adminLink.classList.add('hidden');
-            }
-        }
+            // ज़ूम फंक्शन के लिए बैकग्राउंड इमेज भी अपडेट करें
+            document.getElementById('magnifier-result').style.backgroundImage = `url('${newSrc}')`;
+            
+            // एक्टिव बॉर्डर को सही थंबनेल पर सेट करें
+            document.querySelectorAll('.thumbnail-image').forEach(t => t.classList.remove('border-pink-500', 'border-transparent'));
+            thumb.classList.add('border-pink-500');
+        });
+    });
 
-        function updateCartCount() {
-            const count = cart.reduce((acc, item) => acc + item.quantity, 0);
-            document.getElementById('cart-count').textContent = count;
-        }
+    // --- START: मैग्निफायर (ZOOM) स्क्रिप्ट ---
+    const magnifierResult = document.getElementById('magnifier-result');
+    const magnifierLens = document.getElementById('magnifier-lens');
+    const magnifierOverlay = document.getElementById('magnifier-overlay');
+    let lensSize = 100, zoomFactor = 2.5, imageBounds = null;
+    magnifierLens.style.width = lensSize + 'px';
+    magnifierLens.style.height = lensSize + 'px';
+    magnifierResult.style.width = '500px';
+    magnifierResult.style.height = '500px';
+    magnifierResult.style.position = 'fixed';
+    magnifierResult.style.top = '50%';
+    magnifierResult.style.left = '50%';
+    magnifierResult.style.transform = 'translate(-50%, -50%)';
+    magnifierResult.style.zIndex = '50';
+    magnifierResult.style.backgroundImage = `url('${mainProductImage.src}')`;
+    magnifierResult.style.backgroundRepeat = 'no-repeat';
 
-        function toggleMobileMenu(show) {
-            const menu = document.getElementById('mobile-menu');
-            if (show === undefined) {
-                menu.classList.toggle('hidden');
-            } else if (show) {
-                menu.classList.remove('hidden');
-            } else {
-                menu.classList.add('hidden');
-            }
-        }
+    function showMagnifier() {
+        imageBounds = mainProductImage.getBoundingClientRect();
+        magnifierResult.style.backgroundSize = (imageBounds.width * zoomFactor) + 'px ' + (imageBounds.height * zoomFactor) + 'px';
+        magnifierResult.style.display = 'block';
+        magnifierLens.style.display = 'block';
+        magnifierOverlay.style.display = 'block';
+    }
 
-        // --- CART LOGIC ---
-        function addToCart(productId, size, color, quantity) {
-            let product = allProducts.find(p => p.id === productId);
-            if (!product) return;
-            const existingIndex = cart.findIndex(item => item.id === productId && item.size === size && item.color === color);
-            if (existingIndex !== -1) {
-                cart[existingIndex].quantity += quantity;
-            } else {
-                cart.push({id: product.id, name: product.name, price: product.price, size, color, quantity, image: product.image, alt: product.alt});
-            }
-            updateCartCount();
-        }
+    function hideMagnifier() {
+        magnifierResult.style.display = 'none';
+        magnifierLens.style.display = 'none';
+        magnifierOverlay.style.display = 'none';
+    }
 
-        // --- RENDER FUNCTIONS (PAGES) ---
-        function renderHome() {
-            currentRoute = { page: 'home' };
+    function moveMagnifier(e) {
+        if (!imageBounds) return;
+        e.preventDefault();
+        const cursorX = e.clientX - imageBounds.left;
+        const cursorY = e.clientY - imageBounds.top;
+        let lensX = cursorX - lensSize / 2;
+        let lensY = cursorY - lensSize / 2;
+        if (lensX < 0) lensX = 0;
+        if (lensY < 0) lensY = 0;
+        if (lensX > imageBounds.width - lensSize) lensX = imageBounds.width - lensSize;
+        if (lensY > imageBounds.height - lensSize) lensY = imageBounds.height - lensSize;
+        magnifierLens.style.transform = `translate(${lensX}px, ${lensY}px)`;
+        magnifierResult.style.backgroundPosition = `-${lensX * zoomFactor}px -${lensY * zoomFactor}px`;
+    }
+
+    mainProductImage.addEventListener('mouseover', showMagnifier);
+    mainProductImage.addEventListener('mouseout', hideMagnifier);
+    mainProductImage.addEventListener('mousemove', throttle(moveMagnifier, 16));
+    // --- END: मैग्निफायर स्क्रिप्ट ---
+
+    // --- START: रिव्यु दिखाने का लॉजिक ---
+    const reviewsContainer = document.getElementById('reviews-container');
+    const q = query(collection(db, "products", productId, "reviews"));
+    onSnapshot(q, (querySnapshot) => {
+        reviewsContainer.innerHTML = '';
+        if (querySnapshot.empty) {
+            reviewsContainer.innerHTML = '<p class="text-gray-500">No reviews yet. Be the first to review!</p>';
+        } else {
+            querySnapshot.forEach((doc) => {
+                const review = doc.data();
+                const reviewEl = document.createElement('div');
+                reviewEl.className = 'border-b pb-2';
+                reviewEl.innerHTML = `<div class="flex items-center mb-1">${createStarRating(review.rating, 0)}</div><p><strong>${review.userEmail.split('@')[0]}</strong></p><p>${review.text}</p>`;
+                reviewsContainer.appendChild(reviewEl);
+            });
+        }
+    });
+    // --- END: रिव्यु ---
+
+    // बाकी के सभी डायनामिक लिसनर अटैच करें
+    attachDynamicListeners();
+}
+
+    function renderCart() {
+        currentRoute = { page: 'cart' };
+
+        if (cart.length === 0) {
+            appliedPromoDetails = null; // Reset promo on empty cart
             mainContent.innerHTML = `
-                <section class="relative rounded-lg overflow-hidden shadow-lg h-96">
-                    <video autoplay loop muted playsinline class="absolute z-0 w-full h-full object-cover">
-                        <source src="Generate_a_royal_202508171842_j6odf.mp4" type="video/mp4">
-                    </video>
-                    <div class="relative z-10 h-full bg-gradient-to-r from-black/60 to-transparent flex flex-col justify-center px-6 md:px-20">
-                        <h1 class="text-white text-4xl md:text-6xl font-extrabold max-w-xl leading-tight drop-shadow-lg">Discover Your Style</h1>
-                        <p class="mt-4 text-pink-100 text-lg md:text-xl max-w-md drop-shadow-md">Up to 50% off on top brands.</p>
-                        <button id="hero-shop-now" class="mt-6 inline-block bg-white text-pink-600 font-semibold px-6 py-3 rounded-md shadow-md hover:bg-pink-50 transition w-max cursor-pointer">Shop Now</button>
-                    </div>
-                </section>
-                <section class="mt-12">
-                    <h2 class="text-2xl font-semibold text-gray-800 mb-6">Shop by Category</h2>
-                    <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-6" id="category-grid"></div>
-                </section>
-                <section class="mt-16">
-                    <h2 class="text-2xl font-semibold text-gray-800 mb-6">Featured Products</h2>
-                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6" id="featured-products"></div>
-                </section>
+                <div class="text-center py-20">
+                    <h2 class="text-3xl font-semibold mb-4">Your Cart is Empty</h2>
+                    <button id="continue-shopping-btn" class="bg-pink-600 text-white px-6 py-3 rounded-md hover:bg-pink-700 transition cursor-pointer">Continue Shopping</button>
+                </div>
             `;
-            const categoryContainer = document.getElementById('category-grid');
-            const categories = ["Men", "Women", "Electronics", "Footwear", "Accessories", "Kids"];
-            categoryContainer.innerHTML = categories.map(cat => `
-                <div class="group flex flex-col items-center space-y-2 hover:text-pink-600 transition cursor-pointer category-item" data-category="${cat}">
-                    <img alt="Category: ${cat}" class="rounded-lg object-cover w-28 h-28" height="120" src="${getCategoryImage(cat)}" width="120"/>
-                    <span class="font-medium text-center">${cat}</span>
-                </div>`).join('');
+            document.getElementById('continue-shopping-btn').addEventListener('click', renderHome);
+            updateCartCount();
+            return;
+        }
 
-            const featuredContainer = document.getElementById('featured-products');
-            let featuredProducts = allProducts.sort((a,b) => (b.reviews || 0) - (a.reviews || 0)).slice(0, 5);
-            featuredContainer.innerHTML = featuredProducts.map(p => `
-                <article class="border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition relative group cursor-pointer product-card" data-id="${p.id}">
-                    <img alt="${p.alt || p.name}" class="w-full h-64 object-cover" src="${p.image}" />
-                    <div class="p-4">
-                        <h3 class="text-gray-900 font-semibold text-lg truncate">${p.name}</h3>
-                        <p class="text-pink-600 font-bold mt-1">${formatPrice(p.price)}</p>
-                        <div class="flex items-center mt-2">${createStarRating(p.rating, p.reviews)}</div>
-                        <button class="mt-4 w-full bg-pink-600 text-white py-2 rounded-md font-semibold hover:bg-pink-700 transition add-to-cart-btn flex justify-center items-center space-x-2" data-id="${p.id}">
-                             <i class="fas fa-cart-plus"></i><span>Add to Cart</span>
+        const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
+        let discountAmount = 0;
+
+        if (appliedPromoDetails) {
+            if (appliedPromoDetails.type === 'percent') {
+                discountAmount = (subtotal * appliedPromoDetails.value) / 100;
+            } else if (appliedPromoDetails.type === 'fixed') {
+                discountAmount = appliedPromoDetails.value;
+            }
+        }
+        const finalTotal = subtotal - discountAmount;
+
+        mainContent.innerHTML = `
+            <h2 class="text-3xl font-semibold mb-6">Shopping Cart</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border border-gray-300 rounded-md">
+                    <thead class="bg-pink-600 text-white">
+                        <tr><th class="p-3">Product</th><th class="p-3">Size</th><th class="p-3">Color</th><th class="p-3">Price</th><th class="p-3">Quantity</th><th class="p-3">Total</th><th class="p-3">Remove</th></tr>
+                    </thead>
+                    <tbody>
+                        ${cart.map((item, idx) => `
+                            <tr class="border-t border-gray-300">
+                                <td class="p-3 flex items-center space-x-4"><img alt="${item.name}" class="w-16 h-16 object-cover rounded" src="${item.image}" width="64" height="64"/><span>${item.name}</span></td>
+                                <td class="p-3">${item.size}</td><td class="p-3">${item.color}</td><td class="p-3">${formatPrice(item.price)}</td>
+                                <td class="p-3"><input type="number" min="1" value="${item.quantity}" data-idx="${idx}" class="quantity-input border border-gray-300 rounded px-2 py-1 w-16"/></td>
+                                <td class="p-3">${formatPrice(item.price * item.quantity)}</td>
+                                <td class="p-3 text-center"><button data-idx="${idx}" class="remove-item-btn text-red-600 hover:text-red-800"><i class="fas fa-trash-alt"></i></button></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="flex flex-col md:flex-row justify-between mt-6 gap-6">
+                <div class="w-full md:w-1/3">
+                    <label for="promo-code-input" class="font-semibold mb-2 block">Promo Code</label>
+                    <div class="flex items-center border border-gray-300 rounded-md overflow-hidden">
+                        <input type="text" id="promo-code-input" placeholder="Enter Code" class="px-3 py-2 w-full focus:outline-none" ${appliedPromoDetails ? 'disabled' : ''}>
+                        <button id="apply-promo-btn" class="bg-gray-200 px-4 py-2 font-semibold hover:bg-gray-300 whitespace-nowrap" ${appliedPromoDetails ? 'disabled' : ''}>
+                            ${appliedPromoDetails ? 'Applied' : 'Apply'}
                         </button>
                     </div>
-                </article>
-            `).join('');
-            attachDynamicListeners();
+                    <p id="promo-message" class="text-sm mt-2 h-5"></p>
+                </div>
+
+                <div class="w-full md:w-1/3 text-right space-y-2">
+                    <div>Subtotal: <span class="font-semibold">${formatPrice(subtotal)}</span></div>
+                    <div class="text-green-600 ${discountAmount > 0 ? '' : 'hidden'}">
+                        Discount: <span class="font-semibold">-${formatPrice(discountAmount)}</span>
+                    </div>
+                    <div class="text-2xl font-bold border-t pt-2">Total: <span class="text-pink-600">${formatPrice(finalTotal)}</span></div>
+                    <button id="proceed-checkout-btn" class="w-full mt-4 bg-pink-600 text-white px-6 py-3 rounded-md hover:bg-pink-700 transition cursor-pointer">Proceed to Checkout</button>
+                </div>
+            </div>
+        `;
+
+        const promoInput = document.getElementById('promo-code-input');
+        const promoBtn = document.getElementById('apply-promo-btn');
+        const promoMessage = document.getElementById('promo-message');
+
+        if (promoBtn && !appliedPromoDetails) {
+            promoBtn.addEventListener('click', async () => {
+                const code = promoInput.value.toUpperCase().trim();
+                if (!code) return;
+
+                const codeRef = doc(db, 'promo-codes', code);
+                const docSnap = await getDoc(codeRef);
+
+                if (docSnap.exists() && docSnap.data().isActive) {
+                    appliedPromoDetails = { id: docSnap.id, ...docSnap.data() };
+                    renderCart(); // Re-render the cart to show the discount
+                } else {
+                    promoMessage.textContent = 'Invalid or inactive promo code.';
+                    promoMessage.style.color = 'red';
+                }
+            });
+        } else if (promoInput && appliedPromoDetails) {
+            promoInput.value = appliedPromoDetails.id;
+            promoMessage.textContent = 'Promo code applied!';
+            promoMessage.style.color = 'green';
         }
 
-        function renderShop(category = null) {
-            currentRoute = { page: 'shop', params: category };
-            const products = category ? allProducts.filter(p => p.category === category) : allProducts;
-            const title = category || "All Products";
-            mainContent.innerHTML = `
-                <h2 class="text-3xl font-bold text-gray-800 mb-8">${title}</h2>
-                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-6">
-                    ${products.map(p => `
-                        <article class="product-card cursor-pointer border rounded-lg overflow-hidden shadow-sm hover:shadow-lg" data-id="${p.id}">
-                            <img alt="${p.alt || p.name}" class="w-full h-64 object-cover" src="${p.image}"/>
+        attachDynamicListeners();
+        updateCartCount();
+    }
+
+    function renderCheckout() {
+        currentRoute = { page: 'checkout' };
+        if (cart.length === 0) { renderCart(); return; }
+
+        const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
+        let discountAmount = 0;
+        if (appliedPromoDetails) {
+            if (appliedPromoDetails.type === 'percent') {
+                discountAmount = (subtotal * appliedPromoDetails.value) / 100;
+            } else if (appliedPromoDetails.type === 'fixed') {
+                discountAmount = appliedPromoDetails.value;
+            }
+        }
+        const finalTotal = subtotal - discountAmount;
+
+        mainContent.innerHTML = `
+            <h2 class="text-3xl font-bold mb-8">Checkout</h2>
+            <form id="checkout-form" class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="md:col-span-2 bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-semibold mb-6">Shipping Details</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium">Full Name</label>
+                            <input type="text" id="full-name" name="fullName" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" value="${currentUser ? currentUser.email.split('@')[0] : ''}">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium">Email</label>
+                            <input type="email" id="email" name="email" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" value="${currentUser ? currentUser.email : ''}">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="block text-sm font-medium">Street Address</label>
+                            <input type="text" id="address" name="address" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium">City</label>
+                            <input type="text" id="city" name="city" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium">State</label>
+                            <input type="text" id="state" name="state" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium">Zip Code</label>
+                            <input type="text" id="zip" name="zip" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium">Phone</label>
+                            <input type="tel" id="phone" name="phone" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                        </div>
+                    </div>
+                </div>
+                <div class="md:col-span-1 bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-semibold mb-6">Order Summary</h3>
+                    <div class="space-y-2 text-sm">${cart.map(item => `<div class="flex justify-between"><span>${item.name} x ${item.quantity}</span><span>${formatPrice(item.price*item.quantity)}</span></div>`).join('')}</div>
+                    <div class="flex justify-between font-semibold mt-4 pt-4 border-t"><span>Subtotal</span><span>${formatPrice(subtotal)}</span></div>
+                    <div class="flex justify-between text-green-600 ${discountAmount > 0 ? '' : 'hidden'}"><span>Discount</span><span>-${formatPrice(discountAmount)}</span></div>
+                    <div class="flex justify-between font-bold text-lg mt-2 pt-2 border-t"><span>Total</span><span>${formatPrice(finalTotal)}</span></div>
+                    <button type="submit" form="checkout-form" class="w-full mt-6 bg-pink-600 text-white py-3 rounded-md font-semibold hover:bg-pink-700 transition">Confirm Order</button>
+                </div>
+            </form>`;
+
+        const checkoutForm = document.getElementById('checkout-form');
+        if (checkoutForm) {
+            checkoutForm.addEventListener('submit', async e => {
+                e.preventDefault();
+                if (!checkoutForm.checkValidity()) {
+                    checkoutForm.reportValidity();
+                    return;
+                }
+
+                const submitButton = checkoutForm.querySelector('button[type="submit"]');
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
+
+                const orderDetails = {
+                    fullName: document.getElementById('full-name').value,
+                    email: document.getElementById('email').value,
+                    address: document.getElementById('address').value,
+                    city: document.getElementById('city').value,
+                    state: document.getElementById('state').value,
+                    zip: document.getElementById('zip').value,
+                    phone: document.getElementById('phone').value,
+                    paymentMethod: 'Online',
+                    cart: cart,
+                    total: finalTotal, // Use the final total after discount
+                    discount: discountAmount,
+                    promoCode: appliedPromoDetails ? appliedPromoDetails.id : 'N/A'
+                };
+
+                await submitOrder(orderDetails);
+
+                submitButton.disabled = false;
+                submitButton.innerHTML = 'Confirm Order';
+            });
+        }
+    }
+
+
+    function renderThankYou(orderId) {
+        currentRoute = { page: 'thankyou' };
+        mainContent.innerHTML = `
+            <div class="text-center py-20 max-w-xl mx-auto">
+                <h2 class="text-4xl font-bold text-pink-600 mb-4">Thank You for Your Order!</h2>
+                <p class="text-lg mb-6">Your order has been confirmed. Your Order ID is <span class="font-semibold">${orderId}</span>.</p>
+                <button id="continue-shopping-btn" class="bg-pink-600 text-white px-6 py-3 rounded-md hover:bg-pink-700 transition">Continue Shopping</button>
+            </div>
+        `;
+        document.getElementById('continue-shopping-btn').addEventListener('click', () => {
+            cart = [];
+            appliedPromoDetails = null; // FIX: Added this line to reset promo code
+            updateCartCount();
+            renderHome();
+        });
+    }
+
+    function renderLogin() {
+    currentRoute = { page: 'login' };
+    mainContent.innerHTML = `
+        <div class="max-w-md mx-auto mt-10">
+            <form id="login-form" class="bg-white p-8 rounded-lg shadow-md">
+                <h2 class="text-2xl font-bold mb-6 text-center">Login</h2>
+                <div id="login-error" class="text-red-500 text-center mb-4"></div>
+                <div class="mb-4">
+                    <label class="block text-gray-700">Email</label>
+                    <input type="email" id="login-email" class="w-full px-3 py-2 border rounded" required>
+                </div>
+                <div class="mb-6">
+                    <label class="block text-gray-700">Password</label>
+                    <input type="password" id="login-password" class="w-full px-3 py-2 border rounded" required>
+                </div>
+                <button type="submit" class="w-full bg-pink-600 text-white py-2 rounded-md">Login</button>
+                <p class="text-center mt-4">Don't have an account? <a href="#" id="show-register" class="text-pink-600">Register</a></p>
+            </form>
+            
+            <form id="register-form" class="bg-white p-8 rounded-lg shadow-md hidden">
+                <h2 class="text-2xl font-bold mb-6 text-center">Register</h2>
+                <div id="register-error" class="text-red-500 text-center mb-4"></div>
+                <div class="mb-4">
+                    <label class="block text-gray-700">Email</label>
+                    <input type="email" id="register-email" class="w-full px-3 py-2 border rounded" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700">Password</label>
+                    <input type="password" id="register-password" class="w-full px-3 py-2 border rounded" required>
+                </div>
+
+                <div class="mb-4">
+                    <label class="flex items-center">
+                        <input type="checkbox" id="is-vendor-checkbox" class="h-4 w-4 text-pink-600 border-gray-300 rounded">
+                        <span class="ml-2 text-gray-700">Register as a Vendor</span>
+                    </label>
+                </div>
+                <div id="vendor-fields" class="hidden space-y-4 mb-6">
+                    <div>
+                        <label class="block text-gray-700">Shop Name</label>
+                        <input type="text" id="shop-name" placeholder="Your Shop's Name" class="w-full px-3 py-2 border rounded">
+                    </div>
+                </div>
+                <button type="submit" class="w-full bg-pink-600 text-white py-2 rounded-md">Register</button>
+                <p class="text-center mt-4">Already have an account? <a href="#" id="show-login" class="text-pink-600">Login</a></p>
+            </form>
+        </div>
+    `;
+    
+    // Event listener for the "Register as a Vendor" checkbox
+    document.getElementById('is-vendor-checkbox').addEventListener('change', (e) => {
+        document.getElementById('vendor-fields').classList.toggle('hidden', !e.target.checked);
+    });
+
+    document.getElementById('show-register')?.addEventListener('click', e => {
+        e.preventDefault();
+        document.getElementById('login-form').classList.add('hidden');
+        document.getElementById('register-form').classList.remove('hidden');
+    });
+    document.getElementById('show-login')?.addEventListener('click', e => {
+        e.preventDefault();
+        document.getElementById('register-form').classList.add('hidden');
+        document.getElementById('login-form').classList.remove('hidden');
+    });
+
+    document.getElementById('login-form')?.addEventListener('submit', e => {
+        e.preventDefault();
+        const email = document.getElementById('login-email').value;
+        const pass = document.getElementById('login-password').value;
+        signInWithEmailAndPassword(auth, email, pass)
+            .then(() => renderHome())
+            .catch(err => document.getElementById('login-error').textContent = err.message);
+    });
+
+    // Updated Registration Logic
+    document.getElementById('register-form')?.addEventListener('submit', e => {
+        e.preventDefault();
+        const email = document.getElementById('register-email').value;
+        const pass = document.getElementById('register-password').value;
+        const isVendor = document.getElementById('is-vendor-checkbox').checked;
+        const shopName = document.getElementById('shop-name').value;
+
+        if (isVendor && !shopName) {
+            document.getElementById('register-error').textContent = "Please enter your shop name.";
+            return;
+        }
+
+        createUserWithEmailAndPassword(auth, email, pass)
+            .then((userCredential) => {
+                const user = userCredential.user;
+                
+                let userProfile = {
+                    email: user.email,
+                    role: isVendor ? "vendor" : "customer",
+                };
+                
+                if (isVendor) {
+                    userProfile.shopName = shopName;
+                    userProfile.status = "pending"; // New vendors need approval
+                    userProfile.vendorCategory = "Unassigned"; // Admin will set this
+                }
+
+                setDoc(doc(db, "users", user.uid), userProfile).then(() => {
+                    alert(isVendor ? "Registration successful! Your account is pending approval." : "Registration successful!");
+                    renderHome();
+                });
+            })
+            .catch(err => document.getElementById('register-error').textContent = err.message);
+    });
+}
+
+    function renderAbout() {
+        currentRoute = { page: 'about' };
+        mainContent.innerHTML = `
+            <h2 class="text-3xl font-semibold mb-6">About Us</h2>
+            <p class="mb-4 max-w-3xl text-gray-700 leading-relaxed">
+                Panwar&Son's is India's leading fashion e-commerce platform, offering a wide range of clothing, footwear, accessories, and lifestyle products. Our mission is to bring the latest trends and styles to your doorstep with convenience and trust.
+            </p>
+            <p class="mb-4 max-w-3xl text-gray-700 leading-relaxed">
+                We partner with top brands and designers to provide you with quality products at competitive prices. Customer satisfaction and seamless shopping experience are our top priorities.
+            </p>
+        `;
+    }
+
+    function renderContact() {
+        currentRoute = { page: 'contact' };
+        mainContent.innerHTML = `
+            <h2 class="text-3xl font-semibold mb-6">Contact Us</h2>
+            <form id="contact-form" class="max-w-3xl mx-auto space-y-6" novalidate>
+                <div><label for="contact-name" class="block font-semibold mb-1">Name</label><input type="text" id="contact-name" required class="w-full border border-gray-300 rounded-md px-3 py-2"/></div>
+                <div><label for="contact-email" class="block font-semibold mb-1">Email</label><input type="email" id="contact-email" required class="w-full border border-gray-300 rounded-md px-3 py-2"/></div>
+                <div><label for="contact-message" class="block font-semibold mb-1">Message</label><textarea id="contact-message" rows="5" required class="w-full border border-gray-300 rounded-md px-3 py-2"></textarea></div>
+                <button type="submit" class="bg-pink-600 text-white px-6 py-3 rounded-md hover:bg-pink-700">Send Message</button>
+            </form>
+        `;
+        attachDynamicListeners();
+    }
+
+
+
+    function handleSearch() {
+        // 1. दोनों (डेस्कटॉप और मोबाइल) सर्च बॉक्स से टेक्स्ट निकालें
+        const query = document.getElementById('search-input').value.trim() || document.getElementById('mobile-search-input').value.trim();
+
+        // अगर सर्च बॉक्स खाली है, तो कुछ न करें
+        if (!query) {
+            return; 
+        }
+
+        // 2. सर्च को केस-इन्सेंसिटिव बनाएं (छोटे-बड़े अक्षर से फर्क न पड़े)
+        const lowerCaseQuery = query.toLowerCase();
+
+        // 3. प्रोडक्ट्स को नाम, केटेगरी, और विवरण के आधार पर फ़िल्टर करें
+        const results = allProducts.filter(p =>
+            p.name.toLowerCase().includes(lowerCaseQuery) ||
+            p.category.toLowerCase().includes(lowerCaseQuery) ||
+            p.description.toLowerCase().includes(lowerCaseQuery)
+        );
+
+        // 4. रिजल्ट्स को पेज पर दिखाने के लिए renderSearchResults फंक्शन को कॉल करें
+        renderSearchResults(query, results);
+    }
+
+    
+
+    function renderSearchResults(query, results) {
+        currentRoute = { page: 'search', params: query };
+        mainContent.innerHTML = `
+            <h2 class="text-3xl font-semibold mb-6">Search Results for "${query}"</h2>
+            ${results.length === 0 ? `<p class="text-gray-700">No products found.</p>` : `
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                    ${results.map(p => `
+                        <article class="product-card cursor-pointer border rounded-lg" data-id="${p.id}">
+                           <img alt="${p.alt || p.name}" class="w-full h-64 object-cover" src="${p.image}"/>
                             <div class="p-4">
-                                <h3 class="text-gray-800 font-semibold text-base truncate">${p.name}</h3>
-                                <p class="text-pink-600 font-bold mt-1 text-lg">${formatPrice(p.price)}</p>
-                                <div class="flex items-center mt-2">${createStarRating(p.rating, p.reviews)}</div>
-                                <button class="mt-4 w-full bg-pink-600 text-white py-2 rounded-md font-semibold hover:bg-pink-700 transition add-to-cart-btn flex justify-center items-center space-x-2" data-id="${p.id}">
-                                    <i class="fas fa-cart-plus"></i><span>Add to Cart</span>
-                                </button>
+                                <h3>${p.name}</h3><p>${formatPrice(p.price)}</p>
+                                <button class="add-to-cart-btn" data-id="${p.id}">Add to Cart</button>
                             </div>
                         </article>
                     `).join('')}
                 </div>
-            `;
-            attachDynamicListeners();
-        }
+            `}
+        `;
+        attachDynamicListeners();
+    }
+    async function fetchAllProducts() {
+        const querySnapshot = await getDocs(collection(db, "products"));
+        allProducts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
 
-        function renderProduct(productId) {
-            currentRoute = { page: 'product', params: productId };
-            const product = allProducts.find(p => p.id === productId);
-            if (!product) { render404(); return; }
+    // This is the complete function for the Vendor Dashboard
+function renderAdminDashboard() {
+    currentRoute = { page: 'admin' };
+    mainContent.innerHTML = `
+        <h2 class="text-3xl font-bold mb-8">Vendor/Admin Dashboard</h2>
+        <div id="vendor-management-section" class="hidden bg-white p-6 rounded-lg shadow-md mb-8">
+            <h3 class="text-xl font-semibold mb-4">Vendor Management</h3>
+            <p class="text-gray-600 mb-2">Approve new vendors and assign them a product category.</p>
+            <div id="pending-vendors-list" class="space-y-4"></div>
+        </div>
+        
+                <div id="super-admin-section" class="hidden">
+            <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+                <h3 class="text-xl font-semibold mb-4">Manage Pop-up Banner</h3>
+                <form id="popup-form" class="space-y-4">
+                    <div><label class="block text-sm font-medium">Banner Image URL</label><input type="text" id="popup-image-url" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></div>
+                    <div><label class="block text-sm font-medium">Title</label><input type="text" id="popup-title" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></div>
+                    <div><label class="block text-sm font-medium">Offer Text</label><input type="text" id="popup-offer-text" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></div>
+                    <div><label class="block text-sm font-medium">Description</label><input type="text" id="popup-description" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></div>
+                    <div><label class="block text-sm font-medium">Promo Code</label><input type="text" id="popup-promo-code" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></div>
+                    <div class="flex items-center"><input type="checkbox" id="popup-is-active" class="h-4 w-4"><label for="popup-is-active" class="ml-2">Show Pop-up</label></div>
+                    <button type="submit" class="w-full bg-pink-600 text-white py-2 rounded-md">Save Banner Settings</button>
+                </form>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+                <h3 class="text-xl font-semibold mb-4">Manage Promo Codes</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <h4 id="promo-form-title" class="font-semibold mb-2">Add/Update Code</h4>
+                        <form id="promo-code-form" class="space-y-3">
+                            <input type="text" id="promo-code-name" placeholder="Code Name" class="w-full border p-2 rounded" required>
+                            <select id="promo-code-type" class="w-full border p-2 rounded"><option value="percent">Percent (%)</option><option value="fixed">Fixed (₹)</option></select>
+                            <input type="number" id="promo-code-value" placeholder="Value" class="w-full border p-2 rounded" required>
+                            <div class="flex items-center"><input type="checkbox" id="promo-code-is-active" class="h-4 w-4"><label for="promo-code-is-active" class="ml-2">Is Active</label></div>
+                            <button type="submit" id="promo-submit-btn" class="w-full bg-blue-600 text-white py-2 rounded-md">Save Code</button>
+                        </form>
+                    </div>
+                    <div><h4 class="font-semibold mb-2">Existing Codes</h4><div id="promo-codes-list" class="space-y-2"></div></div>
+                </div>
+            </div>
+        </div>
 
-            const sizeOptions = product.sizes && product.sizes.length > 0 ? product.sizes.map(s => `<option value="${s}">${s}</option>`).join('') : '<option value="N/A">N/A</option>';
-            const colorOptions = product.colors && product.colors.length > 0 ? product.colors.map(c => `<option value="${c}">${c}</option>`).join('') : '<option value="N/A">N/A</option>';
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h3 id="form-title" class="text-xl font-semibold mb-4">Add/Edit Product</h3>
+                 <form id="add-product-form" class="space-y-4">
+        <input type="text" id="product-name" placeholder="Product Name" class="w-full border p-2 rounded" required>
+        <input type="number" id="product-price" placeholder="Price" class="w-full border p-2 rounded" required>
+        <input type="text" id="product-image" placeholder="Main Image URL" class="w-full border p-2 rounded" required>
+        
+        <input type="text" id="product-additional-images" placeholder="Additional Image URLs (comma-separated)" class="w-full border p-2 rounded">
+        <input type="text" id="product-category" placeholder="Category (e.g., Men)" class="w-full border p-2 rounded" required>
+        <input type="text" id="product-sizes" placeholder="Sizes (comma-separated, e.g., S, M, L, XL)" class="w-full border p-2 rounded">
+        <input type="text" id="product-colors" placeholder="Colors (comma-separated, e.g., Red, Blue, Black)" class="w-full border p-2 rounded">
+        <textarea id="product-description" placeholder="Description" class="w-full border p-2 rounded" required></textarea>
+        <button type="submit" id="submit-product-btn" class="w-full bg-pink-600 text-white py-2 rounded-md hover:bg-pink-700">Add Product</button>
+    </form>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h3 class="text-xl font-semibold mb-4">Your Products</h3>
+                <div id="admin-products-list" class="space-y-4"></div>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-lg shadow-md mt-8">
+            <h3 class="text-xl font-semibold mb-4">Recent Orders</h3>
+            <div id="vendor-orders-list" class="space-y-4"><p>Loading orders...</p></div>
+        </div>
+    `;
+
+    setTimeout(() => {
+        let editingPromoId = null; // Variable to track editing state for promo codes
+
+        // --- ADMIN-ONLY FEATURES LOGIC ---
+       if (currentUser.uid === ADMIN_UID) {
+            document.getElementById('vendor-management-section').classList.remove('hidden');
+            document.getElementById('super-admin-section').classList.remove('hidden');
             
-            mainContent.innerHTML = `
-                <div class="flex flex-col md:flex-row gap-10">
-                    <div class="md:w-1/2"><img alt="${product.alt || product.name}" class="w-full rounded-lg shadow-lg" src="${product.image}"/></div>
-                    <div class="md:w-1/2">
-                        <h1 class="text-4xl font-bold">${product.name}</h1>
-                        <p class="text-3xl font-bold text-pink-600 my-4">${formatPrice(product.price)}</p>
-                        <p class="text-gray-600 leading-relaxed mb-6">${product.description}</p>
-                        <div class="flex items-center gap-4 mb-6">
-                            <div class="w-1/2">
-                                <label for="size-select" class="block text-sm font-medium text-gray-700">Size</label>
-                                <select id="size-select" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500 sm:text-sm">${sizeOptions}</select>
-                            </div>
-                            <div class="w-1/2">
-                                <label for="color-select" class="block text-sm font-medium text-gray-700">Color</label>
-                                <select id="color-select" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500 sm:text-sm">${colorOptions}</select>
-                            </div>
-                        </div>
-                        <button class="w-full bg-pink-600 text-white py-3 rounded-lg font-semibold hover:bg-pink-700 transition add-to-cart-btn-detail" data-id="${product.id}">Add to Cart</button>
-                        <div class="mt-10">
-                            <h3 class="text-2xl font-bold mb-4">Reviews</h3>
-                            <div id="reviews-container" class="space-y-4"></div>
-                            <form id="review-form" class="mt-6 ${currentUser ? '' : 'hidden'}">
-                                <div class="flex items-center mb-2" id="star-rating-input">
-                                    <i class="far fa-star text-2xl text-gray-400 cursor-pointer" data-value="1"></i><i class="far fa-star text-2xl text-gray-400 cursor-pointer" data-value="2"></i><i class="far fa-star text-2xl text-gray-400 cursor-pointer" data-value="3"></i><i class="far fa-star text-2xl text-gray-400 cursor-pointer" data-value="4"></i><i class="far fa-star text-2xl text-gray-400 cursor-pointer" data-value="5"></i>
-                                </div>
-                                <input type="hidden" id="rating-value" value="0">
-                                <textarea id="review-text" class="w-full border rounded-md p-2" placeholder="Write your review..." required></textarea>
-                                <button type="submit" class="mt-2 bg-pink-600 text-white px-4 py-2 rounded-md">Submit Review</button>
-                            </form>
-                            <p id="login-for-review" class="${currentUser ? 'hidden' : ''}">Please <a href="#" id="login-link" class="text-pink-600">login</a> to write a review.</p>
-                        </div>
-                    </div>
-                </div>
-            `;
-            attachDynamicListeners();
             
-            // Load and display reviews
-            const reviewsContainer = document.getElementById('reviews-container');
-            const q = query(collection(db, "products", productId, "reviews"));
-            onSnapshot(q, (querySnapshot) => {
-                reviewsContainer.innerHTML = '';
-                if(querySnapshot.empty) {
-                    reviewsContainer.innerHTML = '<p class="text-gray-500">No reviews yet. Be the first to review!</p>';
-                }
-                querySnapshot.forEach((doc) => {
-                    const review = doc.data();
-                    const reviewEl = document.createElement('div');
-                    reviewEl.className = 'border-b pb-2';
-                    reviewEl.innerHTML = `
-                        <div class="flex items-center mb-1">${createStarRating(review.rating, 0)}</div>
-                        <p><strong>${review.userEmail.split('@')[0]}</strong></p>
-                        <p>${review.text}</p>
-                    `;
-                    reviewsContainer.appendChild(reviewEl);
-                });
-            });
+              // --- START: NEW VENDOR MANAGEMENT LOGIC ---
+   
+    const pendingVendorsList = document.getElementById('pending-vendors-list');
+    const vendorsQuery = query(collection(db, "users"), where("role", "==", "vendor"), where("status", "==", "pending"));
+    // 1. Fetch all pending vendors
+    
+    onSnapshot(vendorsQuery, (snapshot) => {
+        pendingVendorsList.innerHTML = '';
+        if (snapshot.empty) {
+            pendingVendorsList.innerHTML = '<p class="text-gray-500">No pending vendor requests.</p>';
+            return;
         }
         
-        function renderCart() {
-            currentRoute = { page: 'cart' };
-            if (cart.length === 0) {
-                mainContent.innerHTML = `
-                    <div class="text-center py-20">
-                        <h2 class="text-3xl font-semibold mb-4">Your Cart is Empty</h2>
-                        <button id="continue-shopping-btn" class="bg-pink-600 text-white px-6 py-3 rounded-md hover:bg-pink-700 transition cursor-pointer">Continue Shopping</button>
+        snapshot.forEach(docSnap => {
+            const vendor = { id: docSnap.id, ...docSnap.data() };
+            const vendorEl = document.createElement('div');
+            vendorEl.className = 'border p-4 rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center';
+            
+            // Categories for the dropdown
+            const categories = ["Men", "Women", "Electronics", "Footwear", "Accessories", "Kids"];
+            const categoryOptions = categories.map(c => `<option value="${c}">${c}</option>`).join('');
+
+            vendorEl.innerHTML = `
+                <div>
+                    <p class="font-bold text-gray-800">${vendor.shopName}</p>
+                    <p class="text-sm text-gray-500">${vendor.email}</p>
+                </div>
+                <div class="flex items-center mt-4 md:mt-0">
+                    <select id="category-for-${vendor.id}" class="border rounded-md p-2 mr-4">
+                        <option value="">Assign Category</option>
+                        ${categoryOptions}
+                    </select>
+                    <button data-id="${vendor.id}" class="approve-vendor-btn bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600">Approve</button>
+                </div>
+            `;
+            pendingVendorsList.appendChild(vendorEl);
+        });
+    });
+
+    // 2. Add event listener for the "Approve" buttons
+    pendingVendorsList.addEventListener('click', async (e) => {
+        if (e.target.matches('.approve-vendor-btn')) {
+            const vendorId = e.target.dataset.id;
+            const selectedCategory = document.getElementById(`category-for-${vendorId}`).value;
+
+            if (!selectedCategory) {
+                alert('Please assign a category before approving.');
+                return;
+            }
+
+            try {
+                const vendorDocRef = doc(db, "users", vendorId);
+                await updateDoc(vendorDocRef, {
+                    status: "approved",
+                    vendorCategory: selectedCategory
+                });
+                alert('Vendor approved successfully!');
+            } catch (error) {
+                alert('Error approving vendor: ' + error.message);
+            }
+        }
+    });
+            // --- Logic for Pop-up Form ---
+            const popupForm = document.getElementById('popup-form');
+            const bannerConfigRef = doc(db, 'site-config', 'popup-banner');
+            getDoc(bannerConfigRef).then(docSnap => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    document.getElementById('popup-image-url').value = data.imageUrl || '';
+                    document.getElementById('popup-title').value = data.title || '';
+                    document.getElementById('popup-offer-text').value = data.offerText || '';
+                    document.getElementById('popup-description').value = data.description || '';
+                    document.getElementById('popup-promo-code').value = data.promoCode || '';
+                    document.getElementById('popup-is-active').checked = data.isActive || false;
+                }
+            });
+            popupForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const settings = {
+                    imageUrl: document.getElementById('popup-image-url').value,
+                    title: document.getElementById('popup-title').value,
+                    offerText: document.getElementById('popup-offer-text').value,
+                    description: document.getElementById('popup-description').value,
+                    promoCode: document.getElementById('popup-promo-code').value,
+                    isActive: document.getElementById('popup-is-active').checked
+                };
+                await setDoc(bannerConfigRef, settings, { merge: true });
+                alert('Banner settings saved!');
+            });
+
+            // --- START: Promo Code Management Logic ---
+            const promoCodeForm = document.getElementById('promo-code-form');
+            const promoCodesList = document.getElementById('promo-codes-list');
+            const promoFormTitle = document.getElementById('promo-form-title');
+            const promoSubmitBtn = document.getElementById('promo-submit-btn');
+
+            // 1. Display existing promo codes
+            const promoCodesQuery = query(collection(db, "promo-codes"));
+            onSnapshot(promoCodesQuery, (snapshot) => {
+                promoCodesList.innerHTML = '';
+                if (snapshot.empty) {
+                    promoCodesList.innerHTML = '<p class="text-gray-500">No promo codes found.</p>';
+                    return;
+                }
+                snapshot.forEach(doc => {
+                    const code = { id: doc.id, ...doc.data() };
+                    const codeEl = document.createElement('div');
+                    codeEl.className = 'flex justify-between items-center p-2 border rounded';
+                    codeEl.innerHTML = `
+                        <div>
+                            <strong class="text-gray-800">${code.id}</strong>
+                            <span class="text-sm text-gray-600">(${code.type === 'percent' ? `${code.value}%` : formatPrice(code.value)} off)</span>
+                            <span class="text-xs font-semibold ${code.isActive ? 'text-green-600' : 'text-red-600'}">${code.isActive ? 'Active' : 'Inactive'}</span>
+                        </div>
+                        <div>
+                            <button class="text-blue-500 hover:text-blue-700 mr-2 edit-promo-btn" data-id="${code.id}">Edit</button>
+                            <button class="text-red-500 hover:text-red-700 delete-promo-btn" data-id="${code.id}">Del</button>
+                        </div>
+                    `;
+                    promoCodesList.appendChild(codeEl);
+                });
+            });
+
+            // 2. Handle Add/Update form submission
+            promoCodeForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const codeName = document.getElementById('promo-code-name').value.toUpperCase().trim();
+                if (!codeName) {
+                    alert('Promo code name cannot be empty.');
+                    return;
+                }
+                const promoData = {
+                    type: document.getElementById('promo-code-type').value,
+                    value: parseFloat(document.getElementById('promo-code-value').value),
+                    isActive: document.getElementById('promo-code-is-active').checked
+                };
+
+                try {
+                    await setDoc(doc(db, 'promo-codes', codeName), promoData, { merge: true });
+                    alert(`Promo code '${codeName}' saved successfully!`);
+                    promoCodeForm.reset();
+                    editingPromoId = null;
+                    promoFormTitle.textContent = 'Add New Promo Code';
+                    promoSubmitBtn.textContent = 'Save Promo Code';
+                    document.getElementById('promo-code-name').disabled = false;
+                } catch (error) {
+                    alert('Error saving promo code: ' + error.message);
+                }
+            });
+
+            // 3. Handle Edit and Delete button clicks
+            promoCodesList.addEventListener('click', async (e) => {
+                const id = e.target.dataset.id;
+                if (!id) return;
+
+                if (e.target.matches('.edit-promo-btn')) {
+                    const codeDoc = await getDoc(doc(db, 'promo-codes', id));
+                    if (codeDoc.exists()) {
+                        const code = codeDoc.data();
+                        document.getElementById('promo-code-name').value = id;
+                        document.getElementById('promo-code-name').disabled = true;
+                        document.getElementById('promo-code-type').value = code.type;
+                        document.getElementById('promo-code-value').value = code.value;
+                        document.getElementById('promo-code-is-active').checked = code.isActive;
+                        
+                        editingPromoId = id;
+                        promoFormTitle.textContent = `Editing: ${id}`;
+                        promoSubmitBtn.textContent = 'Update Code';
+                    }
+                }
+
+                if (e.target.matches('.delete-promo-btn')) {
+                    if (confirm(`Are you sure you want to delete the promo code '${id}'?`)) {
+                        try {
+                            await deleteDoc(doc(db, 'promo-codes', id));
+                            alert('Promo code deleted.');
+                        } catch (error) {
+                            alert('Error deleting promo code: ' + error.message);
+                        }
+                    }
+                }
+            });
+            // --- END: Promo Code Management Logic ---
+        }
+
+
+        // --- PRODUCT MANAGEMENT LOGIC ---
+        let editingProductId = null;
+        const categoryDomains = {
+            Fashion: ["Men", "Women", "Footwear", "Accessories", "Kids"],
+            Electronics: ["Electronics"],
+        };
+        const addProductForm = document.getElementById('add-product-form');
+        const adminProductsList = document.getElementById('admin-products-list');
+        const submitProductBtn = document.getElementById('submit-product-btn');
+        const formTitle = document.getElementById('form-title');
+
+        let productsQuery;
+        if (currentUser.uid === ADMIN_UID) {
+            // यह एडमिन के लिए है
+            productsQuery = query(collection(db, "products"), orderBy("name"));
+        } else {
+            // यह वेंडर के लिए है (सिर्फ अपने प्रोडक्ट्स दिखाओ)
+            productsQuery = query(collection(db, "products"), where("vendorId", "==", currentUser.uid));
+        }
+        onSnapshot(productsQuery, (snapshot) => {
+            adminProductsList.innerHTML = '<p>Loading products...</p>';
+            if (snapshot.empty) {
+                adminProductsList.innerHTML = '<p>No products found.</p>';
+                return;
+            }
+            adminProductsList.innerHTML = '';
+            snapshot.forEach(doc => {
+                const product = { id: doc.id, ...doc.data() };
+                const productEl = document.createElement('div');
+                productEl.className = 'flex justify-between items-center border-b pb-2';
+                const vendorInfo = currentUser.uid === ADMIN_UID ? `<span class="text-xs text-gray-500">${product.vendorName || 'N/A'}</span>` : '';
+
+                productEl.innerHTML = `
+                    <div>
+                        <span>${product.name}</span>
+                        ${vendorInfo}
+                    </div>
+                    <div>
+                        <button class="text-blue-500 hover:text-blue-700 mr-4 edit-product-btn" data-id="${product.id}">Edit</button>
+                        <button class="text-red-500 hover:text-red-700 delete-product-btn" data-id="${product.id}">Delete</button>
                     </div>
                 `;
-                document.getElementById('continue-shopping-btn').addEventListener('click', renderHome);
-                updateCartCount();
-                return;
-            }
-
-            let totalPrice = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
-            mainContent.innerHTML = `
-                <h2 class="text-3xl font-semibold mb-6">Shopping Cart</h2>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border border-gray-300 rounded-md">
-                        <thead class="bg-pink-600 text-white">
-                            <tr><th class="p-3">Product</th><th class="p-3">Size</th><th class="p-3">Color</th><th class="p-3">Price</th><th class="p-3">Quantity</th><th class="p-3">Total</th><th class="p-3">Remove</th></tr>
-                        </thead>
-                        <tbody>
-                            ${cart.map((item, idx) => `
-                                <tr class="border-t border-gray-300">
-                                    <td class="p-3 flex items-center space-x-4"><img alt="${item.alt}" class="w-16 h-16 object-cover rounded" src="${item.image}" width="64" height="64"/><span>${item.name}</span></td>
-                                    <td class="p-3">${item.size}</td><td class="p-3">${item.color}</td><td class="p-3">${formatPrice(item.price)}</td>
-                                    <td class="p-3"><input type="number" min="1" value="${item.quantity}" data-idx="${idx}" class="quantity-input border border-gray-300 rounded px-2 py-1 w-16"/></td>
-                                    <td class="p-3">${formatPrice(item.price * item.quantity)}</td>
-                                    <td class="p-3 text-center"><button data-idx="${idx}" class="remove-item-btn text-red-600 hover:text-red-800"><i class="fas fa-trash-alt"></i></button></td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                </div>
-                <div class="mt-6 flex justify-between items-center">
-                    <div class="text-xl font-semibold">Total: ${formatPrice(totalPrice)}</div>
-                    <button id="proceed-checkout-btn" class="bg-pink-600 text-white px-6 py-3 rounded-md hover:bg-pink-700 transition cursor-pointer">Proceed to Checkout</button>
-                </div>
-            `;
-            attachDynamicListeners();
-            updateCartCount();
-        }
-
-      function renderCheckout() {
-    currentRoute = { page: 'checkout' };
-    if (cart.length === 0) { renderCart(); return; }
-    const totalPrice = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
-    mainContent.innerHTML = `
-        <h2 class="text-3xl font-bold mb-8">Checkout</h2>
-        <form id="checkout-form" class="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div class="md:col-span-2 bg-white p-6 rounded-lg shadow-md">
-                <h3 class="text-xl font-semibold mb-6">Shipping Details</h3>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    
-                    <div>
-                        <label class="block text-sm font-medium">Full Name</label>
-                        <input type="text" id="full-name" name="fullName" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" value="${currentUser ? currentUser.email.split('@')[0] : ''}">
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium">Email</label>
-                         <input type="email" id="email" name="email" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" value="${currentUser ? currentUser.email : ''}">
-                    </div>
-
-                    <div class="sm:col-span-2">
-                        <label class="block text-sm font-medium">Street Address</label>
-                         <input type="text" id="address" name="address" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium">City</label>
-                         <input type="text" id="city" name="city" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium">State</label>
-                         <input type="text" id="state" name="state" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium">Zip Code</label>
-                         <input type="text" id="zip" name="zip" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium">Phone</label>
-                         <input type="tel" id="phone" name="phone" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                    </div>
-                </div>
-            </div>
-            <div class="md:col-span-1 bg-white p-6 rounded-lg shadow-md">
-                <h3 class="text-xl font-semibold mb-6">Order Summary</h3>
-                <div class="space-y-2 text-sm">${cart.map(item => `<div class="flex justify-between"><span>${item.name} x ${item.quantity}</span><span>${formatPrice(item.price*item.quantity)}</span></div>`).join('')}</div>
-                <div class="flex justify-between font-bold text-lg mt-4 pt-4 border-t"><span>Total</span><span>${formatPrice(totalPrice)}</span></div>
-                <button type="submit" form="checkout-form" class="w-full mt-6 bg-pink-600 text-white py-3 rounded-md font-semibold hover:bg-pink-700 transition">Confirm Order</button>
-            </div>
-        </form>`;
-    
-    const checkoutForm = document.getElementById('checkout-form');
-    if (checkoutForm) {
-        checkoutForm.addEventListener('submit', async e => {
-            e.preventDefault();
-            if (!checkoutForm.checkValidity()) {
-                checkoutForm.reportValidity();
-                return;
-            }
-
-            const submitButton = checkoutForm.querySelector('button[type="submit"]');
-            submitButton.disabled = true;
-            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
-
-            // --- THIS PART IS FIXED ---
-            // Now correctly collecting all values using their new IDs
-            const orderDetails = {
-                fullName: document.getElementById('full-name').value,
-                email: document.getElementById('email').value,
-                address: document.getElementById('address').value,
-                city: document.getElementById('city').value,
-                state: document.getElementById('state').value,
-                zip: document.getElementById('zip').value,
-                phone: document.getElementById('phone').value,
-                paymentMethod: 'Online', // Added a default payment method
-                cart: cart,
-                total: totalPrice
-            };
-
-            await submitOrder(orderDetails);
-            
-            // Re-enable the button in case submission fails
-            submitButton.disabled = false;
-            submitButton.innerHTML = 'Confirm Order';
+                adminProductsList.appendChild(productEl);
+            });
         });
+
+        // FIXED: ADDED ERROR HANDLING TO PRODUCT SUBMISSION
+        // FIXED: ADDED ERROR HANDLING AND SIZES/COLORS LOGIC
+addProductForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const price = parseFloat(document.getElementById('product-price').value);
+    if (isNaN(price) || price < 0) {
+        alert('Please enter a valid price for the product.');
+        return;
     }
+
+    // --- START: NEW LOGIC FOR SIZES AND COLORS ---
+    // कॉमा से अलग किए गए साइज़ को एक ऐरे में बदलें
+    const sizesInput = document.getElementById('product-sizes').value.trim();
+    const sizesArray = sizesInput ? sizesInput.split(',').map(s => s.trim()) : [];
+
+    // कॉमा से अलग किए गए कलर को एक ऐरे में बदलें
+    const colorsInput = document.getElementById('product-colors').value.trim();
+    const colorsArray = colorsInput ? colorsInput.split(',').map(c => c.trim()) : [];
+    // --- END: NEW LOGIC FOR SIZES AND COLORS ---
+
+    const categoryInput = document.getElementById('product-category').value;
+    if (currentUser.role === 'vendor' && categoryInput !== currentUser.vendorCategory) {
+    alert(`You can only add products to your assigned category: '${currentUser.vendorCategory}'.`);
+    return;
 }
-        
-        function renderThankYou(orderId) {
-            currentRoute = { page: 'thankyou' };
-             mainContent.innerHTML = `
-                <div class="text-center py-20 max-w-xl mx-auto">
-                    <h2 class="text-4xl font-bold text-pink-600 mb-4">Thank You for Your Order!</h2>
-                    <p class="text-lg mb-6">Your order has been confirmed. Your Order ID is <span class="font-semibold">${orderId}</span>.</p>
-                    <button id="continue-shopping-btn" class="bg-pink-600 text-white px-6 py-3 rounded-md hover:bg-pink-700 transition">Continue Shopping</button>
-                </div>
-            `;
-            document.getElementById('continue-shopping-btn').addEventListener('click', () => {
-                cart = [];
-                updateCartCount();
-                renderHome();
-            });
-        }
 
-        function renderLogin() {
-            currentRoute = { page: 'login' };
-            mainContent.innerHTML = `
-                <div class="max-w-md mx-auto mt-10">
-                    <form id="login-form" class="bg-white p-8 rounded-lg shadow-md">
-                        <h2 class="text-2xl font-bold mb-6 text-center">Login</h2>
-                        <div id="login-error" class="text-red-500 text-center mb-4"></div>
-                        <div class="mb-4">
-                            <label class="block text-gray-700">Email</label>
-                            <input type="email" id="login-email" class="w-full px-3 py-2 border rounded" required>
-                        </div>
-                        <div class="mb-6">
-                            <label class="block text-gray-700">Password</label>
-                            <input type="password" id="login-password" class="w-full px-3 py-2 border rounded" required>
-                        </div>
-                        <button type="submit" class="w-full bg-pink-600 text-white py-2 rounded-md">Login</button>
-                        <p class="text-center mt-4">Don't have an account? <a href="#" id="show-register" class="text-pink-600">Register</a></p>
-                    </form>
-                    <form id="register-form" class="bg-white p-8 rounded-lg shadow-md hidden">
-                        <h2 class="text-2xl font-bold mb-6 text-center">Register</h2>
-                        <div id="register-error" class="text-red-500 text-center mb-4"></div>
-                        <div class="mb-4">
-                            <label class="block text-gray-700">Email</label>
-                            <input type="email" id="register-email" class="w-full px-3 py-2 border rounded" required>
-                        </div>
-                        <div class="mb-6">
-                            <label class="block text-gray-700">Password</label>
-                            <input type="password" id="register-password" class="w-full px-3 py-2 border rounded" required>
-                        </div>
-                        <button type="submit" class="w-full bg-pink-600 text-white py-2 rounded-md">Register</button>
-                        <p class="text-center mt-4">Already have an account? <a href="#" id="show-login" class="text-pink-600">Login</a></p>
-                    </form>
-                </div>
-            `;
-            attachDynamicListeners();
-        }
+    if (currentUser.uid !== ADMIN_UID && currentUser.role === 'vendor') {
+        // ... (आपका पुराना वेंडर वाला लॉजिक जैसा है वैसा ही रहेगा)
+    }
 
-        function renderAbout() {
-            currentRoute = { page: 'about' };
-             mainContent.innerHTML = `
-                <h2 class="text-3xl font-semibold mb-6">About Us</h2>
-                <p class="mb-4 max-w-3xl text-gray-700 leading-relaxed">
-                    Panwar&Son's is India's leading fashion e-commerce platform, offering a wide range of clothing, footwear, accessories, and lifestyle products. Our mission is to bring the latest trends and styles to your doorstep with convenience and trust.
-                </p>
-                <p class="mb-4 max-w-3xl text-gray-700 leading-relaxed">
-                    We partner with top brands and designers to provide you with quality products at competitive prices. Customer satisfaction and seamless shopping experience are our top priorities.
-                </p>
-            `;
-        }
-        
-        function renderContact() {
-            currentRoute = { page: 'contact' };
-            mainContent.innerHTML = `
-                <h2 class="text-3xl font-semibold mb-6">Contact Us</h2>
-                <form id="contact-form" class="max-w-3xl mx-auto space-y-6" novalidate>
-                    <div><label for="contact-name" class="block font-semibold mb-1">Name</label><input type="text" id="contact-name" required class="w-full border border-gray-300 rounded-md px-3 py-2"/></div>
-                    <div><label for="contact-email" class="block font-semibold mb-1">Email</label><input type="email" id="contact-email" required class="w-full border border-gray-300 rounded-md px-3 py-2"/></div>
-                    <div><label for="contact-message" class="block font-semibold mb-1">Message</label><textarea id="contact-message" rows="5" required class="w-full border border-gray-300 rounded-md px-3 py-2"></textarea></div>
-                    <button type="submit" class="bg-pink-600 text-white px-6 py-3 rounded-md hover:bg-pink-700">Send Message</button>
-                </form>
-            `;
-            attachDynamicListeners();
-        }
-
-        function renderSearchResults(query, results) {
-            currentRoute = { page: 'search', params: query };
-            mainContent.innerHTML = `
-                <h2 class="text-3xl font-semibold mb-6">Search Results for "${query}"</h2>
-                ${results.length === 0 ? `<p class="text-gray-700">No products found.</p>` : `
-                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
-                        ${results.map(p => `
-                            <article class="product-card cursor-pointer border rounded-lg" data-id="${p.id}">
-                               <img alt="${p.alt || p.name}" class="w-full h-64 object-cover" src="${p.image}"/>
-                                <div class="p-4">
-                                    <h3>${p.name}</h3><p>${formatPrice(p.price)}</p>
-                                    <button class="add-to-cart-btn" data-id="${p.id}">Add to Cart</button>
-                                </div>
-                            </article>
-                        `).join('')}
-                    </div>
-                `}
-            `;
-            attachDynamicListeners();
-        }
-        
-        function renderAdminDashboard() {
-            currentRoute = { page: 'admin' };
-            mainContent.innerHTML = `
-                <h2 class="text-3xl font-bold mb-8">Admin Dashboard</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div class="bg-white p-6 rounded-lg shadow-md">
-                        <h3 class="text-xl font-semibold mb-4">Add New Product</h3>
-                        <form id="add-product-form" class="space-y-4">
-                            <input type="text" id="product-name" placeholder="Product Name" class="w-full border p-2 rounded" required>
-                            <input type="number" id="product-price" placeholder="Price" class="w-full border p-2 rounded" required>
-                            <input type="text" id="product-image" placeholder="Image URL" class="w-full border p-2 rounded" required>
-                            <input type="text" id="product-category" placeholder="Category (e.g., Men)" class="w-full border p-2 rounded" required>
-                            <input type="text" id="product-sizes" placeholder="Sizes (comma-separated)" class="w-full border p-2 rounded">
-                            <input type="text" id="product-colors" placeholder="Colors (comma-separated)" class="w-full border p-2 rounded">
-                            <textarea id="product-description" placeholder="Description" class="w-full border p-2 rounded" required></textarea>
-                            <button type="submit" class="w-full bg-pink-600 text-white py-2 rounded-md">Add Product</button>
-                        </form>
-                    </div>
-                    <div class="bg-white p-6 rounded-lg shadow-md">
-                        <h3 class="text-xl font-semibold mb-4">Manage Products</h3>
-                        <div id="admin-products-list" class="space-y-4"></div>
-                    </div>
-                </div>
-            `;
-
-            const adminProductsList = document.getElementById('admin-products-list');
-            onSnapshot(query(collection(db, "products")), (snapshot) => {
-                adminProductsList.innerHTML = '';
-                snapshot.forEach(doc => {
-                    const product = { id: doc.id, ...doc.data() };
-                    const productEl = document.createElement('div');
-                    productEl.className = 'flex justify-between items-center border-b pb-2';
-                    productEl.innerHTML = `
-                        <span>${product.name}</span>
-                        <button class="text-red-500 hover:text-red-700 delete-product-btn" data-id="${product.id}">Delete</button>
-                    `;
-                    adminProductsList.appendChild(productEl);
-                });
-                document.querySelectorAll('.delete-product-btn').forEach(btn => {
-                    btn.addEventListener('click', async (e) => {
-                        if(confirm('Are you sure you want to delete this product?')) {
-                           await deleteDoc(doc(db, "products", e.target.dataset.id));
-                        }
-                    });
-                });
-            });
-
-            document.getElementById('add-product-form').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                await addDoc(collection(db, "products"), {
-                    name: document.getElementById('product-name').value,
-                    price: parseFloat(document.getElementById('product-price').value),
-                    image: document.getElementById('product-image').value,
-                    category: document.getElementById('product-category').value,
-                    description: document.getElementById('product-description').value,
-                    sizes: document.getElementById('product-sizes').value.split(',').map(s => s.trim()),
-                    colors: document.getElementById('product-colors').value.split(',').map(c => c.trim()),
-                    rating: 0, reviews: 0,
-                });
-                e.target.reset();
-            });
-        }
-        
-        function render404() {
-             mainContent.innerHTML = `
-                <div class="text-center py-20">
-                    <h2 class="text-6xl font-bold text-pink-600 mb-4">404</h2>
-                    <p class="text-2xl mb-6">Page Not Found</p>
-                    <button id="back-home-btn" class="bg-pink-600 text-white px-6 py-3 rounded-md">Back to Home</button>
-                </div>
-            `;
-            document.getElementById('back-home-btn').addEventListener('click', renderHome);
-        }
-
-        // --- GOOGLE SHEET SUBMISSION ---
-      async function submitOrder(orderDetails) {
-    const orderId = 'PNS' + Date.now();
-    // PASTE YOUR NEW URL FROM STEP 2 HERE
-    const formEndpoint = 'https://script.google.com/macros/s/AKfycbwbojGnpFoVfEXnfL5Z0-HXZLvPYmYMS_mdqT-PjvUheMwxd82ztLhZ33l1aUOR7_pGCA/exec'; 
-
-    const submissionData = {
-    'Order ID': orderId,
-    'Customer Name': orderDetails.fullName,
-    'Email': orderDetails.email,
-    'Phone': orderDetails.phone,
-    'Shipping Address': `${orderDetails.address}, ${orderDetails.city}, ${orderDetails.state} - ${orderDetails.zip}`,
-    'Payment Method': orderDetails.paymentMethod,
-    'Total Amount': formatPrice(orderDetails.cart.reduce((acc, item) => acc + item.price * item.quantity, 0)),
-    'Items': orderDetails.cart.map(item => `- ${item.name} (Size: ${item.size}, Color: ${item.color}) x ${item.quantity}`).join('\n'),
-};
+    const productData = {
+        name: document.getElementById('product-name').value,
+        price: price,
+        image: document.getElementById('product-image').value,
+        additionalImages: document.getElementById('product-additional-images').value.split(',').map(url => url.trim()).filter(url => url !== ''),
+        category: categoryInput,
+        description: document.getElementById('product-description').value,
+        vendorId: currentUser.uid,
+        vendorName: currentUser.shopName,
+        sizes: sizesArray,     // <-- नया डेटा
+        colors: colorsArray,   // <-- नया डेटा
+    };
 
     try {
-        // We send the data and now we can properly wait for a response
+        if (editingProductId) {
+            await updateDoc(doc(db, "products", editingProductId), productData);
+            alert('Product updated successfully!');
+        } else {
+            productData.rating = 0;
+            productData.reviews = 0;
+            await addDoc(collection(db, "products"), productData);
+            alert('Product added successfully!');
+        }
+        
+        // This function might not exist if you chose Solution 1 previously.
+        // If it exists, it will refresh the product list.
+        if (typeof fetchAllProducts === "function") {
+            await fetchAllProducts(); 
+        }
+
+        addProductForm.reset();
+        editingProductId = null;
+        formTitle.textContent = 'Add New Product';
+        submitProductBtn.textContent = 'Add Product';
+        submitProductBtn.classList.replace('bg-green-600', 'bg-pink-600');
+
+    } catch (error) {
+        console.error("Error saving product:", error);
+        alert("Could not save product. Error: " + error.message);
+    }
+});
+
+        adminProductsList.addEventListener('click', async (e) => {
+            const target = e.target;
+            const id = target.dataset.id;
+            if (target.classList.contains('delete-product-btn')) {
+                if (confirm('Are you sure you want to delete this product?')) {
+                    await deleteDoc(doc(db, "products", id));
+                }
+            } else if (target.classList.contains('edit-product-btn')) {
+                const productToEdit = (await getDoc(doc(db, "products", id))).data();
+                if (productToEdit) {
+                    document.getElementById('product-name').value = productToEdit.name;
+                    document.getElementById('product-price').value = productToEdit.price;
+                    document.getElementById('product-image').value = productToEdit.image;
+                     document.getElementById('product-additional-images').value = (productToEdit.additionalImages || []).join(', ');
+                    document.getElementById('product-category').value = productToEdit.category;
+                    document.getElementById('product-description').value = productToEdit.description;
+
+                    document.getElementById('product-sizes').value = (productToEdit.sizes || []).join(', ');
+        document.getElementById('product-colors').value = (productToEdit.colors || []).join(', ');
+                    editingProductId = id;
+                    formTitle.textContent = 'Edit Product';
+                    submitProductBtn.textContent = 'Update Product';
+                    submitProductBtn.classList.replace('bg-pink-600', 'bg-green-600');
+                }
+            }
+        });
+
+        // --- ORDER MANAGEMENT LOGIC ---
+        const vendorOrdersList = document.getElementById('vendor-orders-list');
+        let ordersQuery;
+        if (currentUser.uid === ADMIN_UID) {
+            // यह एडमिन के लिए है
+            ordersQuery = query(collection(db, "orders"), orderBy("createdAt", "desc"));
+        } else {
+            // यह वेंडर के लिए है (सिर्फ अपने ऑर्डर्स दिखाओ)
+            ordersQuery = query(collection(db, "orders"), where("vendorId", "==", currentUser.uid), orderBy("createdAt", "desc"));
+        }
+
+        onSnapshot(ordersQuery, (snapshot) => {
+            if (snapshot.empty) {
+                vendorOrdersList.innerHTML = '<p>No orders found.</p>';
+                return;
+            }
+            vendorOrdersList.innerHTML = '';
+            snapshot.forEach(docSnap => {
+                const order = { id: docSnap.id, ...docSnap.data() };
+                const orderCard = document.createElement('div');
+                orderCard.className = 'border p-4 rounded-lg shadow-sm';
+
+                const createStatusDropdown = (currentStatus) => {
+                    const statuses = ['Pending', 'Shipped', 'Completed', 'Cancelled'];
+                    let options = statuses.map(s => `<option value="${s}" ${s === currentStatus ? 'selected' : ''}>${s}</option>`).join('');
+                    return `<select data-order-id="${order.id}" class="order-status-select border rounded p-1">${options}</select>`;
+                };
+
+                const adminVendorInfo = currentUser.uid === ADMIN_UID ? `<p class="text-sm text-gray-500">Vendor: ${order.items[0]?.vendorName || 'N/A'}</p>` : '';
+
+                orderCard.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <p class="font-bold">Order ID: <span class="font-normal">${order.orderId}</span></p>
+                            <p class="text-sm text-gray-600">Customer: ${order.customerDetails.fullName}</p>
+                            ${adminVendorInfo}
+                        </div>
+                        <div class="font-semibold text-right">
+                            <p>${formatPrice(order.total)}</p>
+                            ${createStatusDropdown(order.status)}
+                        </div>
+                    </div>
+                `;
+                vendorOrdersList.appendChild(orderCard);
+            });
+        });
+
+        vendorOrdersList.addEventListener('change', async (e) => {
+            if (e.target.classList.contains('order-status-select')) {
+                const orderId = e.target.dataset.orderId;
+                const newStatus = e.target.value;
+                if (confirm(`Change order status to "${newStatus}"?`)) {
+                    await updateDoc(doc(db, "orders", orderId), { status: newStatus });
+                    alert('Order status updated!');
+                }
+            }
+        });
+
+    }, 0);
+}
+
+    function setupStaticListeners() {
+        // Navigation
+        const navActions = {
+            'nav-home': renderHome,
+            'nav-home-desktop': renderHome,
+            'nav-home-mobile': renderHome,
+            'nav-shop-desktop': () => renderShop(null),
+            'nav-shop-mobile': () => renderShop(null),
+            'nav-about-desktop': renderAbout,
+            'nav-about-mobile': renderAbout,
+            'nav-contact-desktop': renderContact,
+            'nav-contact-mobile': renderContact,
+            'nav-login-desktop': renderLogin,
+            'nav-login-mobile': renderLogin,
+            'nav-cart': renderCart,
+            'nav-admin-desktop': renderAdminDashboard,
+            'nav-admin-mobile': renderAdminDashboard,
+            'footer-logo': renderHome,
+            'footer-our-story': renderAbout,
+            'footer-careers': () => alert("Careers page coming soon!"),
+            'footer-customer-service': () => alert("Customer Service page coming soon!"),
+            'footer-returns': () => alert("Returns & Refunds page coming soon!"),
+        };
+
+        Object.keys(navActions).forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('click', e => {
+                e.preventDefault();
+                navActions[id]();
+                // Close mobile menu if a mobile link is clicked
+                if (id.endsWith('-mobile')) {
+                    document.getElementById('mobile-menu').classList.add('hidden');
+                }
+            });
+        });
+
+        // Logout Button
+        document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
+
+        // Mobile Menu Toggle
+        document.getElementById('mobile-menu-button').addEventListener('click', () => {
+            document.getElementById('mobile-menu').classList.toggle('hidden');
+       
+        });
+     // --- START: NEW SEARCH BAR CODE ---
+    // सर्च बटन पर क्लिक करने पर handleSearch फंक्शन चलाएं
+    document.getElementById('search-button').addEventListener('click', handleSearch);
+    document.getElementById('mobile-search-button').addEventListener('click', handleSearch);
+
+    // सर्च इनपुट में 'Enter' दबाने पर भी handleSearch फंक्शन चलाएं
+    document.getElementById('search-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            handleSearch();
+        }
+    });
+
+    document.getElementById('mobile-search-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            handleSearch();
+        }
+    });
+    // --- END: NEW SEARCH BAR CODE ---
+    
+    
+    }
+
+    async function submitOrder(orderDetails) {
+    const orderId = 'PNS' + Date.now();
+    const formEndpoint = 'https://script.google.com/macros/s/AKfycbwbojGnpFoVfEXnfL5Z0-HXZLvPYmYMS_mdqT-PjvUheMwxd82ztLhZ33l1aUOR7_pGCA/exec';
+
+    const submissionData = {
+        'Order ID': orderId,
+        'Customer Name': orderDetails.fullName,
+        'Email': orderDetails.email,
+        'Phone': orderDetails.phone,
+        'Shipping Address': `${orderDetails.address}, ${orderDetails.city}, ${orderDetails.state} - ${orderDetails.zip}`,
+        'Payment Method': orderDetails.paymentMethod,
+        'Total Amount': formatPrice(orderDetails.cart.reduce((acc, item) => acc + item.price * item.quantity, 0)),
+        'Items': orderDetails.cart.map(item => `- ${item.name} (Size: ${item.size}, Color: ${item.color}) x ${item.quantity}`).join('\n'),
+    };
+
+    try {
+        // --- FIX #1: Added 'await' to wait for the response ---
+        // The code will now pause here until the Google Script replies.
         const response = await fetch(formEndpoint, {
             method: 'POST',
             headers: {
-                'Content-Type': 'text/plain;charset=utf-8', // Use text/plain for this method
+                'Content-Type': 'text/plain;charset=utf-8',
             },
             body: JSON.stringify(submissionData),
         });
-        
+
+        // --- FIX #2: This part now works correctly ---
+        // Because we waited for the 'response', we can now safely read the result.
         const result = await response.json();
 
         if (result.result === 'success') {
@@ -694,230 +1580,118 @@
             return true;
         } else {
             console.error('Submission failed:', result.message);
-            showToast('Order could not be submitted. Please try again.', true);
+            // You can add an alert here if you want to notify the user of a failure.
+            // alert('Order could not be submitted. Please try again.');
             return false;
         }
 
     } catch (error) {
         console.error('Error submitting order:', error);
-        showToast('Could not send order details. Please check your internet connection.', true);
+        // alert('Could not send order details. Please check your internet connection.');
         return false;
     }
 }
-        // --- EVENT LISTENER ATTACHMENT ---
-        function attachDynamicListeners() {
-            // Product cards (view details)
-            document.querySelectorAll('.product-card').forEach(card => {
-                if(card.dataset.listener) return;
-                card.dataset.listener = true;
-                card.addEventListener('click', e => {
-                    if (e.target.closest('.add-to-cart-btn')) return;
-                    renderProduct(card.dataset.id);
-                });
-            });
 
-            // Add to cart from product cards
-            document.querySelectorAll('.add-to-cart-btn').forEach(btn => {
-                if(btn.dataset.listener) return;
-                btn.dataset.listener = true;
-                btn.addEventListener('click', e => {
-                    e.stopPropagation();
-                    const product = allProducts.find(p => p.id === btn.dataset.id);
-                    if (!product) return;
-                    const size = product.sizes && product.sizes.length > 0 ? product.sizes[0] : 'N/A';
-                    const color = product.colors && product.colors.length > 0 ? product.colors[0] : 'N/A';
-                    addToCart(product.id, size, color, 1);
-                    alert(`${product.name} added to cart!`);
-                });
-            });
-            
-            // Category links on home page
-            document.querySelectorAll('.category-item').forEach(el => el.addEventListener('click', () => renderShop(el.dataset.category)));
-            
-            // Home page hero button
-            const heroBtn = document.getElementById('hero-shop-now');
-            if(heroBtn) heroBtn.addEventListener('click', () => renderShop(null));
 
-            // Product Detail Page: Add to Cart
-            const detailBtn = document.querySelector('.add-to-cart-btn-detail');
-            if(detailBtn) detailBtn.addEventListener('click', e => {
-                const size = document.getElementById('size-select').value;
-                const color = document.getElementById('color-select').value;
-                addToCart(e.currentTarget.dataset.id, size, color, 1);
-                alert('Product added to cart!');
-            });
-            
-            // Product Detail Page: Review Form
-            const reviewForm = document.getElementById('review-form');
-            if (reviewForm) {
-                reviewForm.addEventListener('submit', async e => {
+    // --- INITIALIZATION ---
+    // ========================================================
+    // ============== POP-UP MODAL SCRIPT START ==============
+    // ========================================================
+    const offerModal = document.getElementById('offer-modal');
+    const closeModalBtn = document.getElementById('modal-close-btn');
+    const modalOverlay = document.getElementById('modal-overlay');
+    const modalShopNowBtn = document.getElementById('modal-shop-now-btn');
+
+    const popupBannerImage = document.getElementById('popup-banner-image');
+    const popupBannerTitle = document.getElementById('popup-banner-title');
+    const popupBannerOfferText = document.getElementById('popup-banner-offer-text');
+    const popupBannerDescription = document.getElementById('popup-banner-description');
+    const popupBannerPromoCode = document.getElementById('popup-banner-promo-code');
+
+    const showOfferModal = async () => {
+        if (sessionStorage.getItem('offerShown')) {
+            return; // Don't show again in the same session
+        }
+
+        try {
+            const bannerConfigRef = doc(db, 'site-config', 'popup-banner');
+            const docSnap = await getDoc(bannerConfigRef);
+
+            if (docSnap.exists() && docSnap.data().isActive) {
+                const bannerData = docSnap.data();
+
+                // Populate the modal with data from Firebase
+                popupBannerImage.src = bannerData.imageUrl;
+                popupBannerTitle.textContent = bannerData.title;
+                popupBannerOfferText.textContent = bannerData.offerText;
+                popupBannerDescription.textContent = bannerData.description;
+                popupBannerPromoCode.textContent = bannerData.promoCode || '';
+                modalShopNowBtn.textContent = bannerData.buttonText || 'Shop Now';
+
+                // Set the "Shop Now" button's action
+                modalShopNowBtn.onclick = (e) => {
                     e.preventDefault();
-                    const rating = parseInt(document.getElementById('rating-value').value);
-                    if (rating === 0) { alert('Please select a star rating.'); return; }
-                    await addDoc(collection(db, "products", currentRoute.params, "reviews"), {
-                        text: document.getElementById('review-text').value,
-                        rating: rating,
-                        userEmail: currentUser.email,
-                        createdAt: serverTimestamp()
-                    });
-                    reviewForm.reset();
-                    // Update aggregate rating on product
-                    const reviewsRef = collection(db, "products", currentRoute.params, "reviews");
-                    const snapshot = await getDocs(reviewsRef);
-                    let totalRating = 0;
-                    snapshot.forEach(doc => totalRating += doc.data().rating);
-                    const avgRating = snapshot.size > 0 ? totalRating / snapshot.size : 0;
-                    await updateDoc(doc(db, "products", currentRoute.params), {
-                        rating: avgRating,
-                        reviews: snapshot.size
-                    });
-                });
-                
-                const stars = document.querySelectorAll('#star-rating-input i');
-                stars.forEach(star => {
-                    star.addEventListener('mouseover', () => {
-                        stars.forEach(s => {
-                            s.classList.toggle('fas', s.dataset.value <= star.dataset.value);
-                            s.classList.toggle('far', s.dataset.value > star.dataset.value);
-                        });
-                    });
-                    star.addEventListener('mouseout', () => {
-                        const val = document.getElementById('rating-value').value;
-                        stars.forEach(s => {
-                            s.classList.toggle('fas', s.dataset.value <= val);
-                            s.classList.toggle('far', s.dataset.value > val);
-                        });
-                    });
-                    star.addEventListener('click', () => document.getElementById('rating-value').value = star.dataset.value);
-                });
-                 document.getElementById('login-link')?.addEventListener('click', e => { e.preventDefault(); renderLogin(); });
+                    hideOfferModal();
+                    if (bannerData.linkUrl === 'shop') {
+                        renderShop(null);
+                    } else if (allProducts.some(p => p.id === bannerData.linkUrl)) {
+                        renderProduct(bannerData.linkUrl);
+                    }
+                };
+
+                // Show the modal after a delay
+                setTimeout(() => {
+                    offerModal.classList.remove('hidden');
+                    sessionStorage.setItem('offerShown', 'true');
+                }, 2000); // 2-second delay
             }
-
-            // Cart Page Listeners
-            document.querySelectorAll('.quantity-input').forEach(input => input.addEventListener('change', e => {
-                cart[parseInt(e.target.dataset.idx)].quantity = parseInt(e.target.value) < 1 ? 1 : parseInt(e.target.value);
-                renderCart();
-            }));
-            document.querySelectorAll('.remove-item-btn').forEach(btn => btn.addEventListener('click', e => {
-                cart.splice(parseInt(e.currentTarget.dataset.idx), 1);
-                renderCart();
-            }));
-            document.getElementById('proceed-checkout-btn')?.addEventListener('click', renderCheckout);
-            
-            // Contact Page
-            document.getElementById('contact-form')?.addEventListener('submit', e => {
-                e.preventDefault();
-                alert('Thank you for your message!');
-                e.target.reset();
-            });
-
-            // Login/Register Page
-            document.getElementById('show-register')?.addEventListener('click', e => {
-                e.preventDefault();
-                document.getElementById('login-form').classList.add('hidden');
-                document.getElementById('register-form').classList.remove('hidden');
-            });
-            document.getElementById('show-login')?.addEventListener('click', e => {
-                e.preventDefault();
-                document.getElementById('register-form').classList.add('hidden');
-                document.getElementById('login-form').classList.remove('hidden');
-            });
-            document.getElementById('login-form')?.addEventListener('submit', e => {
-                e.preventDefault();
-                const email = document.getElementById('login-email').value;
-                const pass = document.getElementById('login-password').value;
-                signInWithEmailAndPassword(auth, email, pass)
-                    .then(() => renderHome())
-                    .catch(err => document.getElementById('login-error').textContent = err.message);
-            });
-            document.getElementById('register-form')?.addEventListener('submit', e => {
-                e.preventDefault();
-                const email = document.getElementById('register-email').value;
-                const pass = document.getElementById('register-password').value;
-                createUserWithEmailAndPassword(auth, email, pass)
-                    .then(() => renderHome())
-                    .catch(err => document.getElementById('register-error').textContent = err.message);
-            });
+        } catch (error) {
+            console.error("Error fetching pop-up config:", error);
         }
+    };
 
-        function setupStaticListeners() {
-            // Navigation
-            const navActions = {
-                'nav-home': renderHome, 'nav-home-desktop': renderHome, 'nav-home-mobile': renderHome,
-                'nav-shop-desktop': () => renderShop(null), 'nav-shop-mobile': () => renderShop(null),
-                'nav-about-desktop': renderAbout, 'nav-about-mobile': renderAbout,
-                'nav-contact-desktop': renderContact, 'nav-contact-mobile': renderContact,
-                'nav-login-desktop': renderLogin, 'nav-login-mobile': renderLogin,
-                'nav-cart': renderCart,
-                'nav-admin-desktop': renderAdminDashboard,
-                'footer-logo': renderHome, 'footer-our-story': renderAbout,
-                'footer-careers': () => alert("Careers page coming soon!"),
-                'footer-customer-service': () => alert("Customer Service page coming soon!"),
-                'footer-returns': () => alert("Returns & Refunds page coming soon!"),
-            };
+    const hideOfferModal = () => {
+        offerModal.classList.add('hidden');
+    };
 
-            Object.keys(navActions).forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.addEventListener('click', e => {
-                    e.preventDefault();
-                    navActions[id]();
-                    if (id.endsWith('-mobile')) toggleMobileMenu(false);
-                });
-            });
+    // Event listeners to close the modal
+    closeModalBtn.addEventListener('click', hideOfferModal);
+    modalOverlay.addEventListener('click', hideOfferModal);
+    // ======================================================
+    // =============== POP-UP MODAL SCRIPT END ===============
+    // ======================================================
+    
+    // --- INITIALIZATION (Correct App Startup Sequence) ---
 
-            // Logout
-            document.getElementById('logout-btn').addEventListener('click', () => { signOut(auth); });
-
-            // Search
-            const performSearch = () => {
-                const query = document.getElementById('search-input').value.trim();
-                if(!query) return;
-                const results = allProducts.filter(p => p.name.toLowerCase().includes(query.toLowerCase()));
-                renderSearchResults(query, results);
-            };
-            document.getElementById('search-button').addEventListener('click', performSearch);
-            document.getElementById('search-input').addEventListener('keydown', e => e.key === 'Enter' && performSearch());
-            
-            const performMobileSearch = () => {
-                const query = document.getElementById('mobile-search-input').value.trim();
-                if(!query) return;
-                const results = allProducts.filter(p => p.name.toLowerCase().includes(query.toLowerCase()));
-                renderSearchResults(query, results);
-                toggleMobileMenu(false);
-            };
-            document.getElementById('mobile-search-button').addEventListener('click', performMobileSearch);
-            document.getElementById('mobile-search-input').addEventListener('keydown', e => e.key === 'Enter' && performMobileSearch());
-
-            // Mobile Menu Toggle
-            document.getElementById('mobile-menu-button').addEventListener('click', () => toggleMobileMenu());
+    // 1. Set up the authentication state listener
+    onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            const userDocRef = doc(db, "users", user.uid);
+            const userDocSnap = await getDoc(userDocRef);
+            if (userDocSnap.exists()) {
+                currentUser = { uid: user.uid, email: user.email, ...userDocSnap.data() };
+            } else {
+                const newUserProfile = { email: user.email, role: "customer", shopName: user.email.split('@')[0] };
+                await setDoc(userDocRef, newUserProfile);
+                currentUser = { uid: user.uid, ...newUserProfile };
+            }
+        } else {
+            currentUser = null;
         }
+        updateUserDisplay(currentUser);
+    });
 
-        // --- INITIALIZATION ---
-        function init() {
-            setupStaticListeners();
-            
-            onAuthStateChanged(auth, (user) => {
-                currentUser = user;
-                updateUserDisplay(user);
-                // Re-render current page if user state affects it (e.g., review form)
-                if (currentRoute.page === 'product') {      
-                    renderProduct(currentRoute.params);
-                }
-            });
-            
-            onSnapshot(collection(db, "products"), (snapshot) => {
-                allProducts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                // Re-render current page to reflect any product data changes
-                switch(currentRoute.page) {
-                    case 'home': renderHome(); break;
-                    case 'shop': renderShop(currentRoute.params); break;
-                    case 'product': renderProduct(currentRoute.params); break;
-                    default: renderHome(); // Fallback to home on first load
-                }
-            });
-        }   
+    // 2. The main function to start the application
+    async function initializeApp() {
+        setupStaticListeners();   // Prepare all static buttons
+        await fetchAllProducts(); // Wait for product data to load
+        renderHome();             // Now, show the home page
+        showOfferModal();         // Check if the offer modal should be shown
+    }
 
-        window.onload = init;
-    </script>
+    // 3. Start the app
+    initializeApp();
+
+</script>
 </body>
 </html>
